@@ -35,7 +35,9 @@ const stageLabel = computed(() => STAGES[stage.value].label)
 const progressPct = computed(() => ((stage.value + stageProgress.value) / STAGES.length) * 100)
 
 function tick() {
-  if (stage.value >= STAGES.length) {
+  // 到达末阶段即停在末尾（标签不变、进度满、节点全亮），stage 不再增长
+  if (stage.value >= STAGES.length - 1) {
+    stageProgress.value = 1
     litCount.value = fakeNodes.length
     return
   }
