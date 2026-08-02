@@ -24,6 +24,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as d3 from 'd3'
 import { nodeStroke } from '@/utils/fusion'
+import { useGraphStore } from '@/stores/graph'
 
 const props = defineProps({
   data: { type: Object, required: true },
@@ -31,12 +32,14 @@ const props = defineProps({
   editing: Boolean,
 })
 
-const emit = defineEmits(['select-node', 'select-link', 'add-relation', 'edit-node'])
+const emit = defineEmits(['select-node', 'select-link', 'add-relation', 'edit-node', 'box-select'])
 
 const container = ref(null)
 const svgEl = ref(null)
 const tooltip = ref(null)
 const filterType = ref(null)
+
+const graphStore = useGraphStore()
 
 const conceptTypes = [
   { key: 'method', label: '方法', color: '#e8453c' },
@@ -59,6 +62,9 @@ let dragSourceNode = null
 let zoomBehavior = null
 let currentTransform = null
 let hoveredLink = null
+let boxSelect = null        // 框选起点（svg 屏幕坐标）
+let boxRect = null          // 框选矩形 d3 selection
+let dragGroupStart = null   // 多选批量移动的起始位置快照
 
 onMounted(() => {
   render()
@@ -71,12 +77,20 @@ onUnmounted(() => {
 })
 
 watch(() => props.data, () => { render(); applyFilter() })
-watch(() => props.selectedId, (id) => highlightNode(id))
+watch(() => props.selectedId, (id) => { highlightNode(id); refreshSelectionVisual() })
+// 编辑模式切换时更新 zoom filter（排除背景 mousedown 以便框选，而非平移）
+watch(() => props.editing, () => {
+  if (zoomBehavior) zoomBehavior.filter(event => !props.editing || event.type !== 'mousedown')
+})
+// 多选集合变化 → 刷新节点选中视觉
+watch(() => graphStore.selectedNodeIds, refreshSelectionVisual, { deep: true })
 
 function render() {
   if (!container.value || !props.data) return
   // 重建前先停止旧力模拟，避免 d3-timer 持有旧引用持续 tick（侧栏折叠/转场会提高 render 频率）
   if (simulation) simulation.stop()
+  // 重建前若框选仍在进行则取消（resize/数据刷新可能触发 render）
+  cancelBoxSelect()
 
   const el = container.value
   const W = el.clientWidth
@@ -102,10 +116,14 @@ function render() {
     .html('<feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>')
 
   const g = svg.append('g')
-  zoomBehavior = d3.zoom().scaleExtent([0.15, 5]).on('zoom', e => {
-    currentTransform = e.transform
-    g.attr('transform', e.transform)
-  })
+  zoomBehavior = d3.zoom()
+    .scaleExtent([0.15, 5])
+    // 编辑模式排除 mousedown：空白处拖拽留给框选，而不是背景平移
+    .filter(event => !props.editing || event.type !== 'mousedown')
+    .on('zoom', e => {
+      currentTransform = e.transform
+      g.attr('transform', e.transform)
+    })
   svg.call(zoomBehavior)
   // 优先恢复上次缩放状态，否则居中初始化
   if (currentTransform) {
@@ -114,6 +132,9 @@ function render() {
     currentTransform = d3.zoomIdentity.translate(W / 2, H / 2)
     svg.call(zoomBehavior.transform, currentTransform)
   }
+
+  // 编辑模式：svg 空白 mousedown → 框选（节点自身的 drag 会 stopImmediatePropagation，不会触发到这里）
+  svg.on('mousedown', onSvgMouseDown)
 
   // 力模拟
   simulation = d3.forceSimulation(nodes)
@@ -165,9 +186,27 @@ function render() {
         if (props.editing) { dragSourceNode = d; return }
         if (!e.active) simulation.alphaTarget(0.3).restart()
         d.fx = d.x; d.fy = d.y
+        // 多选批量移动：拖动的节点在多选集合内且多选数量 > 1 → 记录整组初始位置
+        if (graphStore.selectedNodeIds.length > 1 && graphStore.selectedNodeIds.includes(d.id)) {
+          dragGroupStart = props.data.nodes
+            .filter(n => graphStore.selectedNodeIds.includes(n.id))
+            .map(n => ({ id: n.id, x: n.x, y: n.y }))
+        }
       })
       .on('drag', (e, d) => {
         if (props.editing) return
+        if (dragGroupStart) {
+          // 批量移动：把位移 delta 应用到全部选中节点
+          const orig = dragGroupStart.find(p => p.id === d.id)
+          if (!orig) { d.fx = e.x; d.fy = e.y; return }
+          const dx = e.x - orig.x
+          const dy = e.y - orig.y
+          for (const p of dragGroupStart) {
+            const n = props.data.nodes.find(nn => nn.id === p.id)
+            if (n) { n.fx = p.x + dx; n.fy = p.y + dy }
+          }
+          return
+        }
         d.fx = e.x; d.fy = e.y
       })
       .on('end', (e, d) => {
@@ -178,6 +217,13 @@ function render() {
         }
         dragSourceNode = null
         if (!e.active) simulation.alphaTarget(0)
+        if (dragGroupStart) {
+          for (const p of dragGroupStart) {
+            const n = props.data.nodes.find(nn => nn.id === p.id)
+            if (n) { n.fx = null; n.fy = null }
+          }
+          dragGroupStart = null
+        }
         d.fx = null; d.fy = null
       })
     )
@@ -264,6 +310,7 @@ function render() {
   })
 
   highlightNode(props.selectedId)
+  refreshSelectionVisual()
   applyFilter()
 }
 
@@ -313,6 +360,112 @@ function highlightNode(id) {
     })
 }
 
+// ── 多选选中视觉：复用 .selected-ring，多选节点用静态低亮、单选用动画高亮 ──
+function refreshSelectionVisual() {
+  const el = svgEl.value
+  if (!el) return
+  const multi = graphStore.selectedNodeIds || []
+  const single = props.selectedId
+  d3.select(el).selectAll('g g .selected-ring')
+    .attr('stroke-opacity', function () {
+      const d = d3.select(this.parentNode).datum()
+      if (single && d.id === single) return 0.4
+      if (multi.length && multi.includes(d.id)) return 0.3
+      return 0
+    })
+    .attr('style', function () {
+      const d = d3.select(this.parentNode).datum()
+      if (single && d.id === single) return `filter: drop-shadow(0 0 22px ${d.color})`
+      if (multi.length && multi.includes(d.id)) return `filter: drop-shadow(0 0 12px ${d.color})`
+      return null
+    })
+}
+
+// ── 编辑模式框选：svg 空白 mousedown → 虚线矩形 → mouseup 收集矩形内节点 ──
+function cancelBoxSelect() {
+  if (boxRect) { boxRect.remove(); boxRect = null }
+  boxSelect = null
+  window.removeEventListener('mousemove', onBoxMouseMove)
+  window.removeEventListener('mouseup', onBoxMouseUp)
+}
+
+function onSvgMouseDown(e) {
+  if (!props.editing) return
+  // 只响应背景 mousedown：节点/连线上的事件忽略（节点 drag 已 stopImmediatePropagation）
+  const t = e.target
+  if (t && t.closest && (t.closest('[data-role="node"]') || t.closest('[data-role="link"]'))) return
+  const el = svgEl.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+  boxSelect = { startX: x, startY: y }
+  boxRect = d3.select(el).append('rect')
+    .attr('class', 'box-select')
+    .attr('x', x).attr('y', y)
+    .attr('width', 0).attr('height', 0)
+    .attr('fill', 'rgba(232, 69, 60, 0.10)')
+    .attr('stroke', '#e8453c')
+    .attr('stroke-width', 1)
+    .attr('stroke-dasharray', '6 4')
+    .attr('pointer-events', 'none')
+  window.addEventListener('mousemove', onBoxMouseMove)
+  window.addEventListener('mouseup', onBoxMouseUp)
+}
+
+function onBoxMouseMove(e) {
+  if (!boxSelect || !boxRect) return
+  const el = svgEl.value
+  if (!el) return
+  const rect = el.getBoundingClientRect()
+  const x = e.clientX - rect.left
+  const y = e.clientY - rect.top
+  const startX = boxSelect.startX
+  const startY = boxSelect.startY
+  boxRect
+    .attr('x', Math.min(x, startX))
+    .attr('y', Math.min(y, startY))
+    .attr('width', Math.abs(x - startX))
+    .attr('height', Math.abs(y - startY))
+}
+
+function onBoxMouseUp(e) {
+  if (!boxSelect) return
+  const el = svgEl.value
+  if (el) {
+    const rect = el.getBoundingClientRect()
+    const x = e.clientX - rect.left
+    const y = e.clientY - rect.top
+    const startX = boxSelect.startX
+    const startY = boxSelect.startY
+    const minX = Math.min(x, startX)
+    const minY = Math.min(y, startY)
+    const w = Math.abs(x - startX)
+    const h = Math.abs(y - startY)
+    const ids = []
+    // 忽略误触的小矩形
+    if (w > 2 && h > 2 && props.data?.nodes) {
+      // 节点世界坐标 → 屏幕坐标（应用缩放平移），判断是否落在矩形内
+      const t = currentTransform || d3.zoomIdentity
+      for (const n of props.data.nodes) {
+        const sx = n.x * t.k + t.x
+        const sy = n.y * t.k + t.y
+        if (sx >= minX && sx <= minX + w && sy >= minY && sy <= minY + h) {
+          ids.push(n.id)
+        }
+      }
+    }
+    boxRect?.remove()
+    boxRect = null
+    boxSelect = null
+    window.removeEventListener('mousemove', onBoxMouseMove)
+    window.removeEventListener('mouseup', onBoxMouseUp)
+    if (ids.length) emit('box-select', ids)
+  } else {
+    cancelBoxSelect()
+  }
+}
+
 // ── 工具栏缩放控制 ──
 function zoomBy(factor) {
   if (!zoomBehavior || !svgEl.value) return
@@ -356,6 +509,12 @@ defineExpose({ zoomBy, resetZoom, zoomToNode })
   background-image: var(--grain-overlay);
 }
 .kg-container svg { display: block; }
+
+/* 编辑模式框选矩形：即时绘制，非动画 */
+:deep(.box-select) {
+  shape-rendering: crispEdges;
+  pointer-events: none;
+}
 
 /* 节点脉冲动画 */
 :deep(g g circle:nth-child(2)) {

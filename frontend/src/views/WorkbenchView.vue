@@ -54,6 +54,7 @@
           @select-node="onSelectNode"
           @select-link="onSelectLink"
           @add-relation="onAddRelation"
+          @box-select="onBoxSelect"
         />
         <TreeView
           v-else-if="activeView === 'tree'"
@@ -94,8 +95,26 @@
         </svg>
       </button>
       <aside class="wb-sidebar" :class="{ 'is-collapsed': sidebarCollapsed }">
+        <!-- 多选面板：优先于单节点编辑/列表 -->
+        <div v-if="store.selectedNodeIds.length > 0" class="ms-panel">
+          <div class="ms-header">
+            <h4>已选 {{ store.selectedNodeIds.length }} 节点</h4>
+            <button class="ms-clear" title="取消选择" @click="onClearMultiSelect">&times;</button>
+          </div>
+          <div class="ms-list">
+            <div v-for="n in selectedNodes" :key="n.id" class="ms-item">
+              <span class="ms-dot" :style="{ background: n.color || 'var(--vermilion)' }"></span>
+              <span class="ms-name">{{ n.name }}</span>
+              <span class="ms-type">{{ typeLabel(n.type) }}</span>
+            </div>
+          </div>
+          <div class="ms-actions">
+            <el-button size="small" @click="onClearMultiSelect">取消选择</el-button>
+            <el-button size="small" type="danger" @click="onBatchDelete">批量删除</el-button>
+          </div>
+        </div>
         <ConceptEditor
-          v-if="store.selectedNode"
+          v-else-if="store.selectedNode"
           :concept="store.selectedNode"
           :editing="editor.isEditing"
           @save="onSaveConcept"
@@ -135,7 +154,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
@@ -164,6 +183,16 @@ const graphRef = ref(null)
 const addingConcept = ref(false)
 const sidebarCollapsed = ref(false)
 const showingWeave = ref(false)
+
+// 多选面板数据：由选中 id 集合映射到当前图谱节点
+const selectedNodes = computed(() => {
+  if (!store.graphData?.nodes) return []
+  return store.graphData.nodes.filter(n => store.selectedNodeIds.includes(n.id))
+})
+
+// 视图切换/离开时清空多选
+watch(activeView, () => store.clearMultiSelect())
+onUnmounted(() => store.clearMultiSelect())
 
 // ── 图谱顶部搜索：输入匹配概念名 → 选中后聚焦节点 ──
 const searchQuery = ref('')
@@ -211,6 +240,7 @@ function closeSearch() {
 }
 function selectResult(node) {
   graphRef.value?.zoomToNode(node.id)
+  store.clearMultiSelect() // 搜索选中单节点，退出多选态
   store.selectNode(node.id)
   searchQuery.value = ''
   searchOpen.value = false
@@ -244,16 +274,49 @@ async function reload() {
 // ── 图谱选择 ──
 function onSelectNode(id) {
   addingConcept.value = false
+  store.clearMultiSelect() // 单击节点/背景 → 退出多选态（拖拽后 click 被 d3-drag 抑制，不会误清）
   store.selectNode(id)
 }
 function onSelectLink(index) {
   addingConcept.value = false
+  store.clearMultiSelect()
   if (index === null || index === undefined) store.clearSelection()
   else store.selectLink(index)
 }
 function onSelectRelation(link) {
   const idx = store.graphData?.links?.indexOf(link)
-  if (idx >= 0) store.selectLink(idx)
+  if (idx >= 0) {
+    store.clearMultiSelect()
+    store.selectLink(idx)
+  }
+}
+
+// ── 编辑模式框选 → 多选 ──
+function onBoxSelect(ids) {
+  addingConcept.value = false
+  store.setSelectedNodes(ids)
+  store.selectNode(null) // 避免单节点编辑器覆盖多选面板
+}
+function onClearMultiSelect() {
+  store.clearMultiSelect()
+}
+async function onBatchDelete() {
+  const ids = [...store.selectedNodeIds]
+  if (!ids.length) return
+  const nodes = store.graphData?.nodes || []
+  // 删除前从当前图谱数据找各节点的完整对象，供 removeConcept 的 undo 使用
+  const found = ids
+    .map(slug => nodes.find(n => n.id === slug))
+    .filter(Boolean)
+  if (!found.length) { store.clearMultiSelect(); return }
+  try {
+    await Promise.all(found.map(n => editor.removeConcept(paperId, n.id, n)))
+    store.clearMultiSelect()
+    ElMessage.success(`已删除 ${found.length} 个概念`)
+    await reload()
+  } catch (e) {
+    ElMessage.error(e.message || '批量删除失败')
+  }
 }
 
 // ── 概念操作 ──
@@ -470,6 +533,20 @@ async function exportMarkdown() {
 .gs-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .gs-type { font-size: var(--text-xs); color: var(--text-muted); flex-shrink: 0; }
 .gs-empty { padding: var(--space-md); text-align: center; color: var(--text-muted); font-size: var(--text-sm); }
+
+/* ── 多选面板：列出已选节点 + 取消选择 + 批量删除 ── */
+.ms-panel { padding: var(--space-md); }
+.ms-header { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md); }
+.ms-header h4 { font-family: var(--font-display); font-size: var(--text-md); color: var(--text-primary); flex: 1; }
+.ms-clear { width: 28px; height: 28px; border: none; background: none; color: var(--text-muted); font-size: 20px; cursor: pointer; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
+.ms-clear:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.ms-list { display: flex; flex-direction: column; gap: 4px; max-height: 360px; overflow-y: auto; margin-bottom: var(--space-md); }
+.ms-item { display: flex; align-items: center; gap: var(--space-sm); padding: 6px 8px; border-radius: var(--radius-sm); font-size: var(--text-sm); color: var(--text-secondary); background: rgba(255,255,255,0.03); }
+.ms-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
+.ms-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ms-type { font-size: var(--text-xs); color: var(--text-muted); flex-shrink: 0; }
+.ms-actions { display: flex; gap: var(--space-sm); }
+.ms-actions .el-button { flex: 1; }
 
 /* 下拉展开/收起（只用 transform/opacity） */
 .gs-drop-enter-active,
