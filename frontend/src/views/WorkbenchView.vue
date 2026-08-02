@@ -461,7 +461,6 @@ async function exportMarkdown() {
   cursor: pointer;
   font-size: var(--text-sm);
   color: var(--text-secondary);
-  transition: background var(--ease-out), color var(--ease-out);
 }
 .gs-item.hovered, .gs-item:hover {
   background: rgba(255,255,255,0.06);
