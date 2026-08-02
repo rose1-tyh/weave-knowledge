@@ -161,6 +161,7 @@ async function handleManualCreate() {
 
 <style scoped>
 .library-page {
+  --page-accent: var(--page-library-accent);
   height: 100%; overflow-y: auto;
   padding: var(--space-xl) var(--space-2xl);
 }

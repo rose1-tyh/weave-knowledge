@@ -73,7 +73,7 @@ function onSelectNode(id) {
 </script>
 
 <style scoped>
-.explore-page { display: flex; height: 100%; }
+.explore-page { --page-accent: var(--page-explore-accent); display: flex; height: 100%; }
 .explore-sidebar { width: 280px; flex-shrink: 0; padding: var(--space-lg); border-right: 1px solid var(--border-subtle); overflow-y: auto; }
 .explore-sidebar h3 { font-family: var(--font-display); color: var(--text-primary); margin-bottom: var(--space-xs); }
 .explore-hint { font-size: var(--text-sm); color: var(--text-muted); margin-bottom: var(--space-md); }

@@ -1,5 +1,6 @@
 <template>
   <div class="app-shell">
+    <GlowCursor />
     <AppHeader />
     <main class="app-main">
       <router-view v-slot="{ Component, route }">
@@ -13,6 +14,7 @@
 
 <script setup>
 import AppHeader from '@/components/AppHeader.vue'
+import GlowCursor from '@/components/motion/GlowCursor.vue'
 </script>
 
 <style>

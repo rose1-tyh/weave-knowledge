@@ -214,6 +214,7 @@ function openPaper(p) {
 
 <style scoped>
 .home-dashboard {
+  --page-accent: var(--page-home-accent);
   height: 100%;
   overflow-y: auto;
   padding: var(--space-xl) var(--space-2xl);
