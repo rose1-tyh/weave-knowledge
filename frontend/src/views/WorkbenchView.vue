@@ -93,6 +93,9 @@
         />
       </aside>
     </template>
+    <Transition name="weave-fade">
+      <WeaveExtraction v-if="showingWeave" />
+    </Transition>
   </div>
 </template>
 
@@ -110,6 +113,7 @@ import RelationEditor from '@/components/RelationEditor.vue'
 import ConceptList from '@/components/ConceptList.vue'
 import TreeView from '@/components/TreeView.vue'
 import MatrixView from '@/components/MatrixView.vue'
+import WeaveExtraction from '@/components/motion/WeaveExtraction.vue'
 import { exportJSON as apiExportJSON, exportMarkdown as apiExportMD } from '@/api'
 import { toPng } from 'html-to-image'
 
@@ -123,16 +127,25 @@ const activeView = ref('graph')
 const graphRef = ref(null)
 const addingConcept = ref(false)
 const sidebarCollapsed = ref(false)
+const showingWeave = ref(false)
 
 onMounted(async () => {
   try {
     await store.loadGraph(paperId)
     // if not extracted yet, run extraction
     if (!store.graphData || !store.graphData.nodes?.length) {
-      await store.runExtraction(paperId)
+      showingWeave.value = true          // 显示织网动画
+      try {
+        await store.runExtraction(paperId)   // 同步等待真实结果
+        // 成功：让织网动画收尾，再淡出露出真实图谱
+        await delay(600)
+      } finally {
+        showingWeave.value = false
+      }
     }
-  } catch (_) { /* handled by store.error */ }
+  } catch (_) { /* store.error 已处理 */ }
 })
+function delay(ms) { return new Promise(r => setTimeout(r, ms)) }
 
 async function reload() {
   try {
@@ -313,4 +326,17 @@ async function exportMarkdown() {
 .loading-dots span:nth-child(1) { animation-delay: -0.32s; }
 .loading-dots span:nth-child(2) { animation-delay: -0.16s; }
 @keyframes dot-bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.4} 40%{transform:scale(1);opacity:1} }
+
+/* 织网动画覆盖层：淡入淡出（只用 transform/opacity） */
+.weave-fade-enter-active,
+.weave-fade-leave-active {
+  transition: opacity 450ms var(--ease-out-soft), transform 450ms var(--ease-out-soft);
+}
+.weave-fade-enter-from {
+  opacity: 0;
+}
+.weave-fade-leave-to {
+  opacity: 0;
+  transform: scale(0.985);
+}
 </style>
