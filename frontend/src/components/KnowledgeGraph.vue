@@ -6,7 +6,7 @@
     <div class="kg-legend glass-panel">
       <div class="legend-row">
         <span class="legend-label">概念</span>
-        <span v-for="t in conceptTypes" :key="t.key" class="legend-chip">
+        <span v-for="t in conceptTypes" :key="t.key" class="legend-chip" :class="{ active: filterType === t.key }" @click="toggleFilter(t.key)">
           <i :style="{ background: t.color, boxShadow: `0 0 6px ${t.color}` }"></i>{{ t.label }}
         </span>
       </div>
@@ -36,6 +36,7 @@ const emit = defineEmits(['select-node', 'select-link', 'add-relation', 'edit-no
 const container = ref(null)
 const svgEl = ref(null)
 const tooltip = ref(null)
+const filterType = ref(null)
 
 const conceptTypes = [
   { key: 'method', label: '方法', color: '#e8453c' },
@@ -69,7 +70,7 @@ onUnmounted(() => {
   if (resizeObserver) resizeObserver.disconnect()
 })
 
-watch(() => props.data, () => render())
+watch(() => props.data, () => { render(); applyFilter() })
 watch(() => props.selectedId, (id) => highlightNode(id))
 
 function render() {
@@ -124,6 +125,7 @@ function render() {
   // 边
   const linkG = g.append('g')
   const linkLines = linkG.selectAll('line').data(links).join('line')
+    .attr('data-role', 'link')
     .attr('stroke', d => d.color || 'rgba(255,255,255,0.2)')
     .attr('stroke-opacity', 0.6)
     .attr('stroke-width', d => d.type === 'contradicts' ? 2 : 1.2)
@@ -156,6 +158,7 @@ function render() {
   // 节点组
   const nodeG = g.append('g')
   const nodeGroups = nodeG.selectAll('g').data(nodes).join('g')
+    .attr('data-role', 'node')
     .attr('cursor', props.editing ? 'crosshair' : 'pointer')
     .call(d3.drag()
       .on('start', (e, d) => {
@@ -261,6 +264,30 @@ function render() {
   })
 
   highlightNode(props.selectedId)
+  applyFilter()
+}
+
+// ── 图例类型过滤：只改 opacity，不重排布局 ──
+function toggleFilter(key) {
+  filterType.value = filterType.value === key ? null : key
+  applyFilter()
+}
+function applyFilter() {
+  const svg = d3.select(svgEl.value)
+  const f = filterType.value
+  svg.selectAll('g g[data-role=node]').attr('opacity', function () {
+    const d = d3.select(this).datum()
+    return f && d.type !== f ? 0.12 : 1
+  })
+  svg.selectAll('line[data-role=link]').attr('opacity', function () {
+    const d = d3.select(this).datum()
+    if (!f) return 1
+    const src = typeof d.source === 'object' ? d.source : null
+    const tgt = typeof d.target === 'object' ? d.target : null
+    const srcOk = src && src.type === f
+    const tgtOk = tgt && tgt.type === f
+    return srcOk || tgtOk ? 1 : 0.05
+  })
 }
 
 function highlightNode(id) {
@@ -349,7 +376,9 @@ defineExpose({ zoomBy, resetZoom })
 }
 .legend-row { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
 .legend-label { color: var(--text-muted); margin-right: 4px; }
-.legend-chip { display: flex; align-items: center; gap: 4px; color: var(--text-secondary); }
+.legend-chip { display: flex; align-items: center; gap: 4px; color: var(--text-secondary); cursor: pointer; padding: 2px 6px; border-radius: var(--radius-sm); transition: color var(--ease-out), background var(--ease-out); user-select: none; }
+.legend-chip:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.legend-chip.active { color: #fff; background: rgba(255,255,255,0.12); }
 .legend-chip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .legend-row:last-child .legend-chip i { width: 14px; height: 2px; border-radius: 1px; }
 </style>
