@@ -1,0 +1,23 @@
+# 依赖
+node_modules/
+
+# 构建产物
+dist/
+*.local
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+
+# 环境与密钥（绝不提交）
+backend/.env
+
+# 运行数据（数据库、上传的 PDF、日志）
+backend/storage/
+*.log
+
+# 工具目录
+.superpowers/
+.idea/
+.vscode/
