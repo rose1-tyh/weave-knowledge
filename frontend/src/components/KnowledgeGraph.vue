@@ -211,9 +211,15 @@ function render() {
         d.fx = e.x; d.fy = e.y
       })
       .on('end', (e, d) => {
-        if (props.editing && dragSourceNode && dragSourceNode !== d) {
-          emit('add-relation', { source: dragSourceNode.id, target: d.id })
+        // 编辑模式：源节点拖拽到另一节点上方松手 → 创建关系。
+        // 注意 d3-drag 的 end 事件始终携带“手势起点”节点 datum（即源节点），
+        // 因此目标节点需用指针命中测试（elementFromPoint）定位，而非事件自身 datum。
+        if (props.editing && dragSourceNode) {
           dragSourceNode = null
+          const target = nodeAtPoint(e.sourceEvent?.clientX, e.sourceEvent?.clientY)
+          if (target && target.id !== d.id) {
+            emit('add-relation', { source: d.id, target: target.id })
+          }
           return
         }
         dragSourceNode = null
@@ -380,6 +386,15 @@ function refreshSelectionVisual() {
       if (multi.length && multi.includes(d.id)) return `filter: drop-shadow(0 0 12px ${d.color})`
       return null
     })
+}
+
+// 编辑模式拖拽建关系的目标命中：返回指针所在节点 datum（无则 null）。
+// 用 document.elementFromPoint 做真实 DOM 命中测试，兼容缩放平移后的坐标。
+function nodeAtPoint(clientX, clientY) {
+  if (typeof clientX !== 'number' || typeof clientY !== 'number') return null
+  const el = document.elementFromPoint(clientX, clientY)
+  const nodeEl = el && el.closest ? el.closest('[data-role="node"]') : null
+  return nodeEl ? d3.select(nodeEl).datum() : null
 }
 
 // ── 编辑模式框选：svg 空白 mousedown → 虚线矩形 → mouseup 收集矩形内节点 ──
