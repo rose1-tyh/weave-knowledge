@@ -7,6 +7,11 @@
         <el-button type="primary" @click="router.push('/import')">+ 上传论文</el-button>
       </div>
     </div>
+    <div class="status-legend">
+      <span v-for="s in statusMeta" :key="s.status" class="legend-item">
+        <i class="legend-dot" :style="{ background: s.color }"></i>{{ s.label }}
+      </span>
+    </div>
 
     <!-- 加载骨架屏 -->
     <div v-if="loading" class="paper-grid skeleton-grid" aria-label="知识库加载中">
@@ -16,6 +21,7 @@
     <!-- 错落瀑布流卡片 -->
     <div v-else-if="lib.filteredPapers.length" class="paper-grid">
       <div v-for="p in lib.filteredPapers" :key="p.id" class="paper-card glass-panel" @click="openPaper(p)">
+        <span class="pc-statusbar" :style="{ background: statusColor(p.extract_status) }" aria-hidden="true"></span>
         <span class="pc-seal" aria-hidden="true">织</span>
         <div class="pc-header">
           <span class="pc-icon">📄</span>
@@ -62,6 +68,18 @@ const lib = useLibraryStore()
 
 const loading = ref(true)
 
+// 状态色彩编码：与 SealBadge 状态色一致，卡片顶部色条 + 图例
+const statusMeta = [
+  { status: 'done', label: '已提取', color: '#10b981' },
+  { status: 'pending', label: '待提取', color: '#6b7280' },
+  { status: 'processing', label: '提取中', color: '#c9a227' },
+  { status: 'failed', label: '失败', color: '#e8453c' },
+]
+const statusColorMap = Object.fromEntries(statusMeta.map(s => [s.status, s.color]))
+function statusColor(status) {
+  return statusColorMap[status] || '#6b7280'
+}
+
 onMounted(async () => {
   try {
     await lib.fetchPapers()
@@ -104,6 +122,16 @@ async function handleAction(cmd, p) {
 }
 .toolbar-actions { display: flex; gap: var(--space-md); align-items: center; }
 
+/* ── 状态色彩图例 ── */
+.status-legend {
+  display: flex; align-items: center; gap: var(--space-md);
+  margin-bottom: var(--space-md);
+  padding-bottom: var(--space-sm);
+  border-bottom: 1px solid var(--border-subtle);
+}
+.legend-item { display: flex; align-items: center; gap: 6px; font-size: var(--text-xs); color: var(--text-muted); }
+.legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
 /* ── 错落瀑布流 ── */
 .paper-grid {
   columns: 3 260px;
@@ -122,6 +150,14 @@ async function handleAction(cmd, p) {
   transform: translateY(-4px);
   border-color: var(--page-library-accent);
   box-shadow: 0 0 24px rgba(0, 212, 255, 0.12);
+}
+
+/* ── 顶部状态色条（色彩编码，一眼识别） ── */
+.pc-statusbar {
+  position: absolute;
+  top: 0; left: 0; right: 0;
+  height: 3px;
+  opacity: 0.9;
 }
 
 /* ── hover 织字印章（仅 opacity/transform 动效） ── */
