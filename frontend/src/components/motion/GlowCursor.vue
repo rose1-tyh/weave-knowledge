@@ -1,5 +1,5 @@
 <template>
-  <div v-if="enabled" class="glow-cursor" :style="{ transform: `translate(${x}px, ${y}px)` }"></div>
+  <div v-if="enabled" class="glow-cursor" :style="{ transform: `translate(${x - 200}px, ${y - 200}px)` }"></div>
 </template>
 
 <script setup>
@@ -42,7 +42,6 @@ onUnmounted(() => {
   z-index: 5;
   background: radial-gradient(circle, rgba(232,69,60,0.06) 0%, transparent 60%);
   transform: translate(-200px, -200px);
-  transition: left 0s;
   will-change: transform;
 }
 </style>
