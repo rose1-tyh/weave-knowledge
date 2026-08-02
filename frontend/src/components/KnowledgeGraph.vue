@@ -211,18 +211,16 @@ function render() {
         d.fx = e.x; d.fy = e.y
       })
       .on('end', (e, d) => {
-        // 编辑模式：源节点拖拽到另一节点上方松手 → 创建关系。
+        // 编辑模式：源节点拖拽到另一节点上方松手 → 创建关系（命中测试；可能未命中，属正常）。
         // 注意 d3-drag 的 end 事件始终携带“手势起点”节点 datum（即源节点），
-        // 因此目标节点需用指针命中测试（elementFromPoint）定位，而非事件自身 datum。
+        // 因此目标节点需用指针命中测试（elementsFromPoint）定位，而非事件自身 datum。
         if (props.editing && dragSourceNode) {
-          dragSourceNode = null
-          const target = nodeAtPoint(e.sourceEvent?.clientX, e.sourceEvent?.clientY)
-          if (target && target.id !== d.id) {
-            emit('add-relation', { source: d.id, target: target.id })
-          }
-          return
+          const target = nodeAtPoint(e.sourceEvent?.clientX, e.sourceEvent?.clientY, d)
+          if (target) emit('add-relation', { source: d.id, target: target.id })
         }
         dragSourceNode = null
+        // 无条件清理：复位仿真热度、释放全部 fx/fy、清空组移动快照，
+        // 避免拖拽后仿真停在 alpha floor 或节点被钉住（编辑模式同样适用）。
         if (!e.active) simulation.alphaTarget(0)
         if (dragGroupStart) {
           for (const p of dragGroupStart) {
@@ -388,13 +386,20 @@ function refreshSelectionVisual() {
     })
 }
 
-// 编辑模式拖拽建关系的目标命中：返回指针所在节点 datum（无则 null）。
-// 用 document.elementFromPoint 做真实 DOM 命中测试，兼容缩放平移后的坐标。
-function nodeAtPoint(clientX, clientY) {
+// 编辑模式拖拽建关系的目标命中：返回指针下“非源节点”的节点 datum（无则 null）。
+// 用 document.elementsFromPoint 取指针下所有元素，遍历找第一个 [data-role=node] 且
+// datum.id !== 源节点 id 的元素——源节点若在上层盖住目标（DOM 更靠后），仍能命中其下目标。
+// 兼容缩放平移后的坐标（基于渲染几何做真实 DOM 命中）。
+function nodeAtPoint(clientX, clientY, source) {
   if (typeof clientX !== 'number' || typeof clientY !== 'number') return null
-  const el = document.elementFromPoint(clientX, clientY)
-  const nodeEl = el && el.closest ? el.closest('[data-role="node"]') : null
-  return nodeEl ? d3.select(nodeEl).datum() : null
+  const els = document.elementsFromPoint(clientX, clientY) || []
+  for (const el of els) {
+    const nodeEl = el && el.closest ? el.closest('[data-role="node"]') : null
+    if (!nodeEl) continue
+    const datum = d3.select(nodeEl).datum()
+    if (datum && datum.id !== source?.id) return datum
+  }
+  return null
 }
 
 // ── 编辑模式框选：svg 空白 mousedown → 虚线矩形 → mouseup 收集矩形内节点 ──
