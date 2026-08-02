@@ -6,7 +6,7 @@
     <div class="kg-legend glass-panel">
       <div class="legend-row">
         <span class="legend-label">概念</span>
-        <span v-for="t in conceptTypes" :key="t.key" class="legend-chip" :class="{ active: filterType === t.key }" @click="toggleFilter(t.key)">
+        <span v-for="t in conceptTypes" :key="t.key" class="legend-chip" :class="{ active: graphStore.filterType === t.key }" @click="graphStore.toggleFilter(t.key)">
           <i :style="{ background: t.color, boxShadow: `0 0 6px ${t.color}` }"></i>{{ t.label }}
         </span>
       </div>
@@ -37,7 +37,6 @@ const emit = defineEmits(['select-node', 'select-link', 'add-relation', 'edit-no
 const container = ref(null)
 const svgEl = ref(null)
 const tooltip = ref(null)
-const filterType = ref(null)
 
 const graphStore = useGraphStore()
 
@@ -81,10 +80,19 @@ watch(() => props.data, () => { render(); applyFilter() })
 watch(() => props.selectedId, (id) => { highlightNode(id); refreshSelectionVisual() })
 // 编辑模式切换时更新 zoom filter（排除背景 mousedown 以便框选，而非平移）
 watch(() => props.editing, () => {
-  if (zoomBehavior) zoomBehavior.filter(event => !props.editing || event.type !== 'mousedown')
+  if (zoomBehavior) zoomBehavior.filter(shouldZoom)
 })
+// 过滤状态存 graph store（规格 F1）：Workbench/Explore 共享、跨视图切换保持；变化即重算视觉
+watch(() => graphStore.filterType, () => applyFilter())
 // 多选集合变化 → 刷新节点选中视觉
 watch(() => graphStore.selectedNodeIds, refreshSelectionVisual, { deep: true })
+
+// d3-zoom 过滤：普通模式恢复默认检查（!event.button 拦右键/中键拖拽，Ctrl+手势排除双重缩放），
+// 编辑模式额外排除 mousedown（背景拖拽留给框选而非平移）；wheel 始终放行。
+function shouldZoom(event) {
+  return (props.editing ? event.type !== 'mousedown' : (!event.ctrlKey || event.type === 'wheel'))
+    && !event.button
+}
 
 function render() {
   if (!container.value || !props.data) return
@@ -119,8 +127,9 @@ function render() {
   const g = svg.append('g')
   zoomBehavior = d3.zoom()
     .scaleExtent([0.15, 5])
-    // 编辑模式排除 mousedown：空白处拖拽留给框选，而不是背景平移
-    .filter(event => !props.editing || event.type !== 'mousedown')
+    // 组合 d3-zoom 默认过滤（!event.button 拦右键/中键拖拽、!event.ctrlKey 排除 Ctrl+手势），
+    // 编辑模式额外排除 mousedown：空白处拖拽留给框选，而不是背景平移
+    .filter(shouldZoom)
     .on('zoom', e => {
       currentTransform = e.transform
       g.attr('transform', e.transform)
@@ -319,14 +328,10 @@ function render() {
   applyFilter()
 }
 
-// ── 图例类型过滤：只改 opacity，不重排布局 ──
-function toggleFilter(key) {
-  filterType.value = filterType.value === key ? null : key
-  applyFilter()
-}
+// ── 图例类型过滤：只改 opacity，不重排布局；过滤状态由 graph store 持有（规格 F1）──
 function applyFilter() {
   const svg = d3.select(svgEl.value)
-  const f = filterType.value
+  const f = graphStore.filterType
   svg.selectAll('g g[data-role=node]').attr('opacity', function () {
     const d = d3.select(this).datum()
     return f && d.type !== f ? 0.12 : 1
