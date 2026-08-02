@@ -21,7 +21,7 @@
 
     <!-- 右侧：上传按钮 -->
     <div class="header-actions">
-      <button class="btn-upload" @click="$emit('upload')">
+      <button class="btn-upload" @click="router.push('/import')">
         <span class="btn-icon">+</span>上传论文
       </button>
     </div>
@@ -29,7 +29,8 @@
 </template>
 
 <script setup>
-defineEmits(['upload'])
+import { useRouter } from 'vue-router'
+const router = useRouter()
 </script>
 
 <style scoped>
