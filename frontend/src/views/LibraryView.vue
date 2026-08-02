@@ -8,8 +8,15 @@
       </div>
     </div>
 
-    <div class="paper-grid" v-if="lib.filteredPapers.length">
+    <!-- 加载骨架屏 -->
+    <div v-if="loading" class="paper-grid skeleton-grid" aria-label="知识库加载中">
+      <SkeletonBlock v-for="n in 6" :key="n" height="160px" />
+    </div>
+
+    <!-- 错落瀑布流卡片 -->
+    <div v-else-if="lib.filteredPapers.length" class="paper-grid">
       <div v-for="p in lib.filteredPapers" :key="p.id" class="paper-card glass-panel" @click="openPaper(p)">
+        <span class="pc-seal" aria-hidden="true">织</span>
         <div class="pc-header">
           <span class="pc-icon">📄</span>
           <el-dropdown trigger="click" @command="(cmd) => handleAction(cmd, p)">
@@ -29,7 +36,7 @@
           <span>{{ p.relation_count || 0 }} 关系</span>
         </div>
         <div class="pc-footer">
-          <span class="pc-status" :class="p.extract_status">{{ statusMap[p.extract_status] || p.extract_status }}</span>
+          <SealBadge :status="p.extract_status" />
           <span class="pc-date">{{ p.upload_time?.slice(0, 10) }}</span>
         </div>
       </div>
@@ -43,17 +50,27 @@
 </template>
 
 <script setup>
-import { onMounted } from 'vue'
+import { onMounted, ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { useLibraryStore } from '@/stores/library'
+import SealBadge from '@/components/motion/SealBadge.vue'
+import SkeletonBlock from '@/components/motion/SkeletonBlock.vue'
 
 const router = useRouter()
 const lib = useLibraryStore()
 
-const statusMap = { done: '已提取', pending: '待提取', processing: '提取中', failed: '失败' }
+const loading = ref(true)
 
-onMounted(() => lib.fetchPapers())
+onMounted(async () => {
+  try {
+    await lib.fetchPapers()
+  } catch (_) {
+    /* 拉取失败则保留空列表 */
+  } finally {
+    loading.value = false
+  }
+})
 
 function openPaper(p) {
   router.push({ name: 'Workbench', params: { paperId: p.id } })
@@ -86,17 +103,55 @@ async function handleAction(cmd, p) {
   color: var(--text-primary);
 }
 .toolbar-actions { display: flex; gap: var(--space-md); align-items: center; }
+
+/* ── 错落瀑布流 ── */
 .paper-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-  gap: var(--space-md);
+  columns: 3 260px;
+  column-gap: var(--space-md);
 }
 .paper-card {
+  position: relative;
+  overflow: hidden;
   padding: var(--space-lg);
+  margin-bottom: var(--space-md);
+  break-inside: avoid;
   cursor: pointer;
-  transition: all var(--ease-out);
+  transition: transform var(--ease-out-soft), border-color var(--ease-out-soft), box-shadow var(--ease-out-soft);
 }
-.paper-card:hover { border-color: var(--vermilion); }
+.paper-card:hover {
+  transform: translateY(-4px);
+  border-color: var(--page-library-accent);
+  box-shadow: 0 0 24px rgba(0, 212, 255, 0.12);
+}
+
+/* ── hover 织字印章（仅 opacity/transform 动效） ── */
+.pc-seal {
+  position: absolute;
+  right: -14px; bottom: -16px;
+  width: 84px; height: 84px;
+  display: flex; align-items: center; justify-content: center;
+  border: 2px solid var(--page-library-accent);
+  border-radius: 10px;
+  background: rgba(0, 212, 255, 0.05);
+  color: var(--page-library-accent);
+  font-family: var(--font-display);
+  font-size: 38px; font-weight: 700; line-height: 1;
+  opacity: 0;
+  transform: rotate(-14deg) scale(0.9);
+  transition: opacity var(--ease-out-soft), transform var(--ease-out-soft);
+  pointer-events: none; user-select: none;
+}
+.paper-card:hover .pc-seal {
+  opacity: 0.55;
+  transform: rotate(-14deg) scale(1);
+}
+
+/* ── 骨架屏 ── */
+.skeleton-grid :deep(.skeleton-block) {
+  break-inside: avoid;
+  margin-bottom: var(--space-md);
+}
+
 .pc-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--space-sm); }
 .pc-icon { font-size: 28px; }
 .pc-menu-btn { background: none; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; padding: 0 4px; }
@@ -109,10 +164,12 @@ async function handleAction(cmd, p) {
 .pc-meta { display: flex; gap: var(--space-md); margin-bottom: var(--space-md); }
 .pc-meta span { font-size: var(--text-xs); color: var(--text-muted); }
 .pc-footer { display: flex; justify-content: space-between; align-items: center; }
-.pc-status { font-size: var(--text-xs); padding: 2px 8px; border-radius: 10px; background: rgba(255,255,255,0.05); color: var(--text-muted); }
-.pc-status.done { color: var(--emerald); background: var(--emerald-bg); }
-.pc-status.failed { color: var(--vermilion); background: var(--vermilion-bg); }
 .pc-date { font-size: var(--text-xs); color: var(--text-muted); }
 .empty-state { text-align: center; padding: var(--space-3xl); color: var(--text-muted); }
 .empty-state p { margin-bottom: var(--space-md); }
+
+/* ── 减弱动效 ── */
+@media (prefers-reduced-motion: reduce) {
+  .paper-card, .pc-seal { transition: none !important; }
+}
 </style>
