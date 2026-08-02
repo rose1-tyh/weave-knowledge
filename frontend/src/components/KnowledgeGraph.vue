@@ -74,6 +74,7 @@ onMounted(() => {
 onUnmounted(() => {
   if (simulation) simulation.stop()
   if (resizeObserver) resizeObserver.disconnect()
+  cancelBoxSelect() // 卸载时清理可能残留的 window mousemove/mouseup 监听
 })
 
 watch(() => props.data, () => { render(); applyFilter() })
@@ -389,8 +390,21 @@ function cancelBoxSelect() {
   window.removeEventListener('mouseup', onBoxMouseUp)
 }
 
+// 框选结束后的尾随 click 抑制：注册一次性捕获 click，阻止其冒泡到 svg 的 click handler。
+// 现状编辑模式 svg click 本就是 no-op，此为保险丝——即使将来某条路径让背景 click emit，也不会误清多选。
+function suppressTrailingClick() {
+  const handler = (e) => {
+    e.preventDefault()
+    e.stopImmediatePropagation()
+    window.removeEventListener('click', handler, true)
+  }
+  window.addEventListener('click', handler, true)
+  setTimeout(() => window.removeEventListener('click', handler, true), 0)
+}
+
 function onSvgMouseDown(e) {
   if (!props.editing) return
+  if (e.button !== 0) return // 只响应左键，避免右键触发框选/原生菜单
   // 只响应背景 mousedown：节点/连线上的事件忽略（节点 drag 已 stopImmediatePropagation）
   const t = e.target
   if (t && t.closest && (t.closest('[data-role="node"]') || t.closest('[data-role="link"]'))) return
@@ -460,6 +474,7 @@ function onBoxMouseUp(e) {
     boxSelect = null
     window.removeEventListener('mousemove', onBoxMouseMove)
     window.removeEventListener('mouseup', onBoxMouseUp)
+    suppressTrailingClick() // 保险丝：吞掉本次框选手势产生的尾随 click
     if (ids.length) emit('box-select', ids)
   } else {
     cancelBoxSelect()
