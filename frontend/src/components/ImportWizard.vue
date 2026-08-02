@@ -19,9 +19,9 @@
         <p class="iw-processing-text">正在提取知识…</p>
       </div>
 
-      <!-- step 0: 上传 PDF -->
+      <!-- step 0: 上传文件 -->
       <template v-else-if="current === 0">
-        <p class="iw-desc">拖拽或点击上传论文 PDF，AI 将自动提取概念与关系。</p>
+        <p class="iw-desc">拖拽或点击上传论文 PDF / Word，AI 将自动提取概念与关系。</p>
         <UploadPanel :uploading="loading" :error="error" @upload="handleUpload" />
       </template>
 
@@ -62,7 +62,7 @@ import UploadPanel from '@/components/UploadPanel.vue'
 const router = useRouter()
 
 const steps = [
-  { key: 'pdf', label: '上传 PDF', icon: '📄' },
+  { key: 'pdf', label: '上传文件', icon: '📄' },
   { key: 'text', label: '粘贴文本', icon: '📝' },
   { key: 'url', label: '网页链接', icon: '🔗' },
   { key: 'manual', label: '手动创建', icon: '✏️' },

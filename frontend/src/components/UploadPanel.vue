@@ -1,7 +1,7 @@
 <template>
   <div class="upload-panel" :class="{ 'is-dragover': isDragover, 'is-disabled': uploading }"
     @dragover.prevent="onDragOver" @dragleave.prevent="onDragLeave" @drop.prevent="onDrop" @click="triggerInput">
-    <input ref="fileInput" type="file" accept=".pdf" style="display:none" @change="onFileChange" />
+    <input ref="fileInput" type="file" accept=".pdf,.docx" style="display:none" @change="onFileChange" />
     <div class="up-icon">
       <svg width="56" height="56" viewBox="0 0 56 56" fill="none">
         <rect x="10" y="8" width="36" height="40" rx="4" stroke="currentColor" stroke-width="1.5" fill="none"/>
@@ -11,7 +11,7 @@
       </svg>
     </div>
     <p class="up-text" v-if="!uploading">
-      <strong>拖拽论文 PDF 至此</strong><br />
+      <strong>拖拽论文 PDF / Word 至此</strong><br />
       <span>或点击选择文件（最大 50MB）</span>
     </p>
     <p class="up-text" v-else>处理中...</p>

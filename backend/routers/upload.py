@@ -1,21 +1,32 @@
-"""PDF 上传与解析接口"""
+"""PDF / DOCX 上传与解析接口"""
 
+import os
 from fastapi import APIRouter, UploadFile, File, HTTPException
 from models.schemas import R, PaperInfo
 from services.pdf_service import PDFService
+from services.docx_service import DocxService
 from services.library_service import LibraryService
 
 router = APIRouter(prefix="/api", tags=["upload"])
-pdf_service = PDFService()
+
+
+def _get_parser(filename: str):
+    """按扩展名返回解析服务；不合法抛出 ValueError"""
+    ext = os.path.splitext(filename)[1].lower()
+    if ext == ".pdf":
+        return PDFService
+    if ext == ".docx":
+        return DocxService
+    raise ValueError(f"不支持的文件类型: {ext}，仅允许 PDF / DOCX")
 
 
 @router.post("/upload")
 async def upload_paper(file: UploadFile = File(...)):
-    """上传论文 PDF，保存并提取文本，写入数据库"""
+    """上传论文（PDF / DOCX），保存并提取文本，写入数据库"""
     if not file.filename:
         raise HTTPException(400, detail="文件名为空")
     try:
-        pdf_service.validate(file.filename)
+        parser = _get_parser(file.filename)
     except ValueError as e:
         raise HTTPException(400, detail=str(e))
 
@@ -25,8 +36,8 @@ async def upload_paper(file: UploadFile = File(...)):
     if len(content) > 50 * 1024 * 1024:
         raise HTTPException(400, detail="文件超过 50MB 限制")
 
-    paper_id = pdf_service.save(content, file.filename)
-    result = pdf_service.extract(paper_id)
+    paper_id = parser.save(content, file.filename)
+    result = parser.extract(paper_id)
 
     # 写入数据库
     await LibraryService.create_paper(

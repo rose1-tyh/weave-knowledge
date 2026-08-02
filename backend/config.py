@@ -18,7 +18,7 @@ AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.deepseek.com")
 # 论文存储
 PAPER_STORAGE_DIR = os.path.join(os.path.dirname(__file__), "storage", "papers")
 MAX_FILE_SIZE = 50 * 1024 * 1024
-ALLOWED_EXTENSIONS = {".pdf"}
+ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 
 # 文本处理
 MAX_CHUNK_CHARS = 80000
