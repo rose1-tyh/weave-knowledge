@@ -23,6 +23,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as d3 from 'd3'
+import { nodeStroke } from '@/utils/fusion'
 
 const props = defineProps({
   data: { type: Object, required: true },
@@ -182,11 +183,11 @@ function render() {
     .attr('fill', d => d.color)
     .attr('opacity', 0.08)
 
-  // 节点主体
+  // 节点主体（描边支持融合来源着色：paperIndex → 论文色；-1 → 混合亮紫）
   nodeGroups.append('circle')
     .attr('r', 18)
     .attr('fill', '#111827')
-    .attr('stroke', d => d.color)
+    .attr('stroke', d => nodeStroke(d))
     .attr('stroke-width', 2)
     .attr('style', d => `filter: drop-shadow(0 0 6px ${d.color})`)
 

@@ -1,7 +1,7 @@
 <template>
   <div class="global-search">
     <div class="gs-input-wrap">
-      <input v-model="query" placeholder="搜索所有概念..." class="gs-input" @keyup.enter="doSearch" />
+      <input ref="inputEl" v-model="query" placeholder="搜索所有概念..." class="gs-input" @keyup.enter="doSearch" />
     </div>
     <div class="gs-results" v-if="results.length">
       <div v-for="r in results" :key="r.id" class="gs-item" @click="$emit('select', r.id)">
@@ -19,17 +19,32 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 
-const props = defineProps({ results: { type: Array, default: () => [] } })
+const props = defineProps({
+  results: { type: Array, default: () => [] },
+  /** 挂载后自动聚焦输入框（用于 ⌘K 全局搜索面板） */
+  autofocus: { type: Boolean, default: false },
+})
 const emit = defineEmits(['search', 'select'])
 const query = ref('')
 const searched = ref(false)
+const inputEl = ref(null)
 
 function doSearch() {
   searched.value = true
   emit('search', query.value)
 }
+
+function focus() {
+  inputEl.value?.focus()
+}
+
+onMounted(() => {
+  if (props.autofocus) focus()
+})
+
+defineExpose({ focus, clear: () => { query.value = ''; searched.value = false } })
 </script>
 
 <style scoped>
