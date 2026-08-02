@@ -56,6 +56,7 @@ let resizeObserver = null
 let dragSourceNode = null
 let zoomBehavior = null
 let currentTransform = null
+let hoveredLink = null
 
 onMounted(() => {
   render()
@@ -78,6 +79,7 @@ function render() {
   const H = el.clientHeight
   const { nodes, links } = props.data
   if (!nodes.length) return
+  hoveredLink = null
 
   const svg = d3.select(svgEl.value)
   svg.selectAll('*').remove()
@@ -120,7 +122,7 @@ function render() {
   const linkG = g.append('g')
   const linkLines = linkG.selectAll('line').data(links).join('line')
     .attr('stroke', d => d.color || 'rgba(255,255,255,0.2)')
-    .attr('stroke-opacity', 0.5)
+    .attr('stroke-opacity', 0.6)
     .attr('stroke-width', d => d.type === 'contradicts' ? 2 : 1.2)
     .attr('stroke-dasharray', d => d.type === 'contradicts' ? '8,4' : null)
     .style('cursor', 'pointer')
@@ -128,7 +130,11 @@ function render() {
       e.stopPropagation()
       emit('select-link', links.indexOf(d))
     })
-    .on('mouseenter', (e, d) => {
+    .on('mouseenter', function (e, d) {
+      hoveredLink = d
+      d3.select(this)
+        .attr('stroke-width', d.type === 'contradicts' ? 3.5 : 2.7)
+        .attr('stroke-opacity', 0.9)
       tip.textContent = d.type || '关系'
       tip.classList.add('visible')
     })
@@ -136,7 +142,13 @@ function render() {
       tip.style.left = (e.offsetX + 14) + 'px'
       tip.style.top = (e.offsetY - 10) + 'px'
     })
-    .on('mouseleave', () => tip.classList.remove('visible'))
+    .on('mouseleave', function (e, d) {
+      hoveredLink = null
+      d3.select(this)
+        .attr('stroke-width', d.type === 'contradicts' ? 2 : 1.2)
+        .attr('stroke-opacity', 0.6)
+      tip.classList.remove('visible')
+    })
 
   // 节点组
   const nodeG = g.append('g')
@@ -166,9 +178,9 @@ function render() {
 
   // 外圈光晕
   nodeGroups.append('circle')
-    .attr('r', 26)
+    .attr('r', 30)
     .attr('fill', d => d.color)
-    .attr('opacity', 0.06)
+    .attr('opacity', 0.08)
 
   // 节点主体
   nodeGroups.append('circle')
@@ -176,6 +188,7 @@ function render() {
     .attr('fill', '#111827')
     .attr('stroke', d => d.color)
     .attr('stroke-width', 2)
+    .attr('style', d => `filter: drop-shadow(0 0 6px ${d.color})`)
 
   // 选中发光环
   nodeGroups.append('circle')
@@ -233,8 +246,14 @@ function render() {
 
   // tick
   simulation.on('tick', () => {
-    linkLines.attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    linkLines
+      .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
       .attr('x2', d => d.target.x).attr('y2', d => d.target.y)
+      .attr('stroke-width', d => {
+        const base = d.type === 'contradicts' ? 2 : 1.2
+        return hoveredLink === d ? base + 1.5 : base
+      })
+      .attr('stroke-opacity', d => hoveredLink === d ? 0.9 : 0.6)
     nodeGroups.attr('transform', d => `translate(${d.x},${d.y})`)
   })
 
@@ -243,14 +262,25 @@ function render() {
 
 function highlightNode(id) {
   const svg = d3.select(svgEl.value)
-  svg.selectAll('g g .selected-ring').attr('stroke-opacity', function () {
-    const d = d3.select(this.parentNode).datum()
-    return d && d.id === id ? 0.4 : 0
-  })
-  svg.selectAll('g g circle:nth-child(2)').attr('stroke-width', function () {
-    const d = d3.select(this.parentNode).datum()
-    return d && d.id === id ? 3 : 2
-  })
+  svg.selectAll('g g .selected-ring')
+    .attr('stroke-opacity', function () {
+      const d = d3.select(this.parentNode).datum()
+      return d && d.id === id ? 0.4 : 0
+    })
+    .attr('style', function () {
+      const d = d3.select(this.parentNode).datum()
+      return d && d.id === id ? `filter: drop-shadow(0 0 22px ${d.color})` : null
+    })
+  svg.selectAll('g g circle:nth-child(2)')
+    .attr('stroke-width', function () {
+      const d = d3.select(this.parentNode).datum()
+      return d && d.id === id ? 3 : 2
+    })
+    .attr('style', function () {
+      const d = d3.select(this.parentNode).datum()
+      const selected = d && d.id === id
+      return `filter: drop-shadow(0 0 ${selected ? 14 : 6}px ${d.color})`
+    })
 }
 
 // ── 工具栏缩放控制 ──
@@ -269,7 +299,16 @@ defineExpose({ zoomBy, resetZoom })
 </script>
 
 <style scoped>
-.kg-container { width: 100%; height: 100%; position: relative; overflow: hidden; background: var(--space-deep); }
+.kg-container {
+  width: 100%; height: 100%; position: relative; overflow: hidden;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(201,162,39,0.06), transparent 60%),
+    var(--space-deep);
+}
+.kg-container::after {
+  content: ''; position: absolute; inset: 0; pointer-events: none;
+  background-image: var(--grain-overlay);
+}
 .kg-container svg { display: block; }
 
 /* 节点脉冲动画 */

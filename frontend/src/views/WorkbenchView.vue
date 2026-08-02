@@ -1,5 +1,5 @@
 <template>
-  <div class="workbench">
+  <div class="workbench" :class="{ 'sidebar-collapsed': sidebarCollapsed }">
     <div class="wb-loading" v-if="store.loading">
       <div class="loading-dots"><span></span><span></span><span></span></div>
       <p>AI 正在分析论文，提取知识结构...</p>
@@ -48,7 +48,17 @@
         />
         <ViewSwitcher :active="activeView" @switch="activeView = $event" />
       </div>
-      <aside class="wb-sidebar">
+      <button
+        class="wb-sidebar-toggle"
+        :class="{ 'is-collapsed': sidebarCollapsed }"
+        :title="sidebarCollapsed ? '展开侧栏' : '折叠侧栏'"
+        @click="sidebarCollapsed = !sidebarCollapsed"
+      >
+        <svg class="wst-chevron" width="14" height="14" viewBox="0 0 16 16" aria-hidden="true">
+          <path d="M6 3l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+      <aside class="wb-sidebar" :class="{ 'is-collapsed': sidebarCollapsed }">
         <ConceptEditor
           v-if="store.selectedNode"
           :concept="store.selectedNode"
@@ -112,6 +122,7 @@ const paperId = route.params.paperId
 const activeView = ref('graph')
 const graphRef = ref(null)
 const addingConcept = ref(false)
+const sidebarCollapsed = ref(false)
 
 onMounted(async () => {
   try {
@@ -256,9 +267,46 @@ async function exportMarkdown() {
 </script>
 
 <style scoped>
-.workbench { display: flex; height: 100%; }
+.workbench { position: relative; display: flex; height: 100%; overflow: hidden; }
 .wb-main { flex: 1; position: relative; min-width: 0; }
-.wb-sidebar { width: var(--right-panel-width); flex-shrink: 0; border-left: 1px solid var(--border-subtle); overflow-y: auto; background: var(--space-elevated); }
+
+/* 侧栏折叠按钮：悬浮于图谱右边界，GPU transform 滑动，不动画 width */
+.wb-sidebar-toggle {
+  position: absolute;
+  top: calc(var(--space-md) + 52px);
+  right: calc(var(--right-panel-width) + var(--space-md));
+  z-index: 20;
+  width: 28px; height: 28px;
+  display: flex; align-items: center; justify-content: center;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  background: var(--space-elevated);
+  color: var(--text-secondary);
+  cursor: pointer;
+  transition: transform var(--ease-out-soft), background var(--ease-out), border-color var(--ease-out), color var(--ease-out);
+}
+.wb-sidebar-toggle:hover { color: var(--text-primary); border-color: var(--border-strong); background: rgba(255,255,255,0.06); }
+.wb-sidebar-toggle .wst-chevron { display: block; transition: transform var(--ease-out-soft); }
+.workbench.sidebar-collapsed .wb-sidebar-toggle { transform: translateX(var(--right-panel-width)); }
+.workbench.sidebar-collapsed .wb-sidebar-toggle .wst-chevron { transform: rotate(180deg); }
+
+/* 侧栏：展开为 flex 项；折叠转 absolute 滑出（transform 动画，宽度变化瞬时） */
+.wb-sidebar {
+  position: relative;
+  flex-shrink: 0;
+  border-left: 1px solid var(--border-subtle);
+  overflow-y: auto;
+  background: var(--space-elevated);
+  width: var(--right-panel-width);
+  transition: transform var(--ease-out-soft), box-shadow var(--ease-out-soft);
+  transform: translateX(0);
+}
+.wb-sidebar.is-collapsed {
+  position: absolute;
+  top: 0; right: 0; bottom: 0;
+  transform: translateX(100%);
+  box-shadow: var(--shadow-elevated);
+}
 .wb-loading, .wb-error { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-md); color: var(--text-secondary); }
 .loading-dots { display: flex; gap: 8px; }
 .loading-dots span { width: 10px; height: 10px; border-radius: 50%; background: var(--vermilion); animation: dot-bounce 1.4s ease-in-out infinite both; }
