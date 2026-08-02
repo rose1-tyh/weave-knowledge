@@ -239,3 +239,20 @@ html, body, #app {
 .graph-tooltip.visible {
   opacity: 1;
 }
+
+/* ── 页面转场：三种命名转场（路由 meta.transition 驱动） ── */
+
+/* 转场：淡入位移 */
+.fade-slide-enter-active, .fade-slide-leave-active { transition: opacity 0.32s var(--ease-out-soft), transform 0.32s var(--ease-out-soft); }
+.fade-slide-enter-from { opacity: 0; transform: translateY(16px); }
+.fade-slide-leave-to { opacity: 0; transform: translateY(-12px); }
+
+/* 转场：缩放淡入 */
+.zoom-fade-enter-active, .zoom-fade-leave-active { transition: opacity 0.38s var(--ease-out-soft), transform 0.38s var(--ease-out-soft); }
+.zoom-fade-enter-from { opacity: 0; transform: scale(0.94); }
+.zoom-fade-leave-to { opacity: 0; transform: scale(1.02); }
+
+/* 转场：织入 */
+.weave-reveal-enter-active, .weave-reveal-leave-active { transition: opacity 0.5s var(--ease-out-soft), transform 0.5s var(--ease-out-soft); }
+.weave-reveal-enter-from { opacity: 0; transform: rotate(-3deg) scale(0.96); }
+.weave-reveal-leave-to { opacity: 0; transform: rotate(1.5deg) scale(1.01); }

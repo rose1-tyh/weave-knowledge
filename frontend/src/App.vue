@@ -2,9 +2,9 @@
   <div class="app-shell">
     <AppHeader />
     <main class="app-main">
-      <router-view v-slot="{ Component }">
-        <transition name="fade-slide" mode="out-in">
-          <component :is="Component" />
+      <router-view v-slot="{ Component, route }">
+        <transition :name="route.meta.transition || 'fade-slide'" mode="out-in">
+          <component :is="Component" :key="route.path" />
         </transition>
       </router-view>
     </main>
@@ -25,19 +25,5 @@ import AppHeader from '@/components/AppHeader.vue'
 .app-main {
   flex: 1;
   overflow: hidden;
-}
-
-/* 页面过渡 */
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
-}
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
 }
 </style>
