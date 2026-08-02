@@ -52,9 +52,32 @@ export const useGraphStore = defineStore('graph', () => {
   function selectLink(index) { selectedLinkIndex.value = index; selectedNodeId.value = null }
   function clearSelection() { selectedNodeId.value = null; selectedLinkIndex.value = null }
 
+  const filterType = ref(null)
+  const selectedNodeIds = ref([])
+
+  function toggleFilter(type) {
+    filterType.value = filterType.value === type ? null : type
+  }
+  function setFilter(type) {
+    filterType.value = type
+  }
+  function toggleMultiSelect(id) {
+    const i = selectedNodeIds.value.indexOf(id)
+    if (i >= 0) selectedNodeIds.value.splice(i, 1)
+    else selectedNodeIds.value.push(id)
+  }
+  function clearMultiSelect() {
+    selectedNodeIds.value = []
+  }
+  function setSelectedNodes(ids) {
+    selectedNodeIds.value = ids
+  }
+
   return {
     paperTitle, graphData, selectedNodeId, selectedLinkIndex,
     selectedNode, selectedLink, loading, error,
     loadGraph, runExtraction, selectNode, selectLink, clearSelection,
+    filterType, selectedNodeIds,
+    toggleFilter, setFilter, toggleMultiSelect, clearMultiSelect, setSelectedNodes,
   }
 })
