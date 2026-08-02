@@ -4,7 +4,7 @@
       <input ref="inputEl" v-model="query" placeholder="搜索所有概念..." class="gs-input" @keyup.enter="doSearch" />
     </div>
     <div class="gs-results" v-if="results.length">
-      <div v-for="r in results" :key="r.id" class="gs-item" @click="$emit('select', r.id)">
+      <div v-for="r in results" :key="r.id" class="gs-item" @click="$emit('select', r)">
         <span class="gs-dot" :style="{ background: r.color || 'var(--text-muted)' }"></span>
         <div class="gs-info">
           <span class="gs-name">{{ r.name }}</span>

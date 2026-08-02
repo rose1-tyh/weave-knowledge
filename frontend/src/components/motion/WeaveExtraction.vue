@@ -57,7 +57,7 @@ onUnmounted(() => clearInterval(timer))
 .weave-extract {
   position: absolute;
   inset: 0;
-  z-index: 5;
+  z-index: 30;
   display: flex;
   flex-direction: column;
   align-items: center;

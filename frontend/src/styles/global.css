@@ -204,20 +204,6 @@ html, body, #app {
   background-size: 24px 24px;
 }
 
-/* ── 页面过渡动画 ── */
-.fade-slide-enter-active,
-.fade-slide-leave-active {
-  transition: opacity 0.25s ease, transform 0.25s ease;
-}
-.fade-slide-enter-from {
-  opacity: 0;
-  transform: translateY(10px);
-}
-.fade-slide-leave-to {
-  opacity: 0;
-  transform: translateY(-10px);
-}
-
 /* ── D3 图谱 tooltip（暗色） ── */
 .graph-tooltip {
   position: absolute;

@@ -27,7 +27,7 @@
     </div>
 
     <div class="explore-right" v-if="searchResults.length || selectedNode">
-      <GlobalSearch v-if="!selectedNode" :results="searchResults" @search="doSearch" />
+      <GlobalSearch v-if="!selectedNode" :results="searchResults" @search="doSearch" @select="onSelectResult" />
       <ConceptEditor v-else :concept="selectedNode" :editing="false" @close="selectedNode = null" />
     </div>
 
@@ -40,7 +40,7 @@
               <span class="cmdk-title">全局搜索</span>
               <span class="cmdk-kbd">⌘K · Esc</span>
             </div>
-            <GlobalSearch :results="searchResults" @search="doSearch" @select="searchOpen = false" autofocus />
+            <GlobalSearch :results="searchResults" @search="doSearch" @select="onSelectResult" autofocus />
           </div>
         </div>
       </transition>
@@ -50,6 +50,7 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { fusionGraph, searchConcepts } from '@/api'
 import { computePaperIndex } from '@/utils/fusion'
@@ -58,6 +59,7 @@ import ConceptEditor from '@/components/ConceptEditor.vue'
 import GlobalSearch from '@/components/GlobalSearch.vue'
 import ParticleBackground from '@/components/ParticleBackground.vue'
 
+const router = useRouter()
 const lib = useLibraryStore()
 const papers = ref([])
 const selectedIds = ref([])
@@ -116,6 +118,16 @@ async function doSearch(q) {
 function onSelectNode(id) {
   if (!fusionData.value) return
   selectedNode.value = fusionData.value.nodes.find(n => n.id === id) || null
+}
+
+// 点击搜索结果 → 跳转该概念所属论文的工作台
+function onSelectResult(r) {
+  searchOpen.value = false
+  selectedNode.value = null
+  const paperId = r?.paperId
+  if (paperId) {
+    router.push({ name: 'Workbench', params: { paperId } })
+  }
 }
 </script>
 

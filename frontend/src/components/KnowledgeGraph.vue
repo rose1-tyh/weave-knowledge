@@ -74,6 +74,8 @@ watch(() => props.selectedId, (id) => highlightNode(id))
 
 function render() {
   if (!container.value || !props.data) return
+  // 重建前先停止旧力模拟，避免 d3-timer 持有旧引用持续 tick（侧栏折叠/转场会提高 render 频率）
+  if (simulation) simulation.stop()
 
   const el = container.value
   const W = el.clientWidth
