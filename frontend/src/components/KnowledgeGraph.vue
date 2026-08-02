@@ -325,7 +325,23 @@ function resetZoom() {
   d3.select(svgEl.value).transition().duration(200)
     .call(zoomBehavior.transform, d3.zoomIdentity.translate(W / 2, H / 2))
 }
-defineExpose({ zoomBy, resetZoom })
+
+// ── 搜索定位：匹配到概念名后，居中聚焦到该节点 ──
+function zoomToNode(id) {
+  if (!props.data) return
+  const node = props.data.nodes.find(n => n.id === id)
+  if (!node || !zoomBehavior || !container.value) return
+  const W = container.value.clientWidth
+  const H = container.value.clientHeight
+  const target = { x: node.x ?? 0, y: node.y ?? 0 }
+  const k = currentTransform?.k ?? 1
+  const k2 = Math.max(k, 1.6)
+  const t = d3.zoomIdentity.translate(W / 2 - target.x * k2, H / 2 - target.y * k2).scale(k2)
+  d3.select(svgEl.value).transition().duration(500)
+    .call(zoomBehavior.transform, t)
+  emit('select-node', id)  // 让侧栏显示详情
+}
+defineExpose({ zoomBy, resetZoom, zoomToNode })
 </script>
 
 <style scoped>

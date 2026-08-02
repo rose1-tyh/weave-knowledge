@@ -10,6 +10,41 @@
     </div>
     <template v-else-if="store.graphData">
       <div class="wb-main">
+        <div v-if="activeView === 'graph'" class="graph-search glass-panel">
+          <el-input
+            v-model="searchQuery"
+            class="graph-search-input"
+            placeholder="搜索概念，聚焦节点…"
+            clearable
+            :prefix-icon="Search"
+            @focus="onSearchFocus"
+            @blur="onSearchBlur"
+            @input="onSearchInput"
+            @keydown.down.prevent="moveHighlight(1)"
+            @keydown.up.prevent="moveHighlight(-1)"
+            @keydown.enter.prevent="onSearchEnter"
+            @keydown.esc="closeSearch"
+          />
+          <transition name="gs-drop">
+            <div v-if="searchOpen && searchQuery && searchResults.length" class="gs-results">
+              <div
+                v-for="(r, i) in searchResults"
+                :key="r.id"
+                class="gs-item"
+                :class="{ hovered: i === highlightIndex }"
+                @mousedown.prevent="selectResult(r)"
+                @mouseenter="highlightIndex = i"
+              >
+                <span class="gs-dot" :style="{ background: r.color || 'var(--cyan)' }"></span>
+                <span class="gs-name">{{ r.name }}</span>
+                <span class="gs-type">{{ typeLabel(r.type) }}</span>
+              </div>
+            </div>
+            <div v-else-if="searchOpen && searchQuery && !searchResults.length" class="gs-empty">
+              未找到匹配概念
+            </div>
+          </transition>
+        </div>
         <KnowledgeGraph
           v-if="activeView === 'graph'"
           ref="graphRef"
@@ -100,9 +135,10 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { useGraphStore } from '@/stores/graph'
 import { useEditorStore } from '@/stores/editor'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
@@ -128,6 +164,58 @@ const graphRef = ref(null)
 const addingConcept = ref(false)
 const sidebarCollapsed = ref(false)
 const showingWeave = ref(false)
+
+// ── 图谱顶部搜索：输入匹配概念名 → 选中后聚焦节点 ──
+const searchQuery = ref('')
+const searchOpen = ref(false)
+const highlightIndex = ref(-1)
+
+const searchResults = computed(() => {
+  const q = searchQuery.value.trim()
+  if (!q || !store.graphData?.nodes) return []
+  return store.graphData.nodes
+    .filter(n => n.name && n.name.includes(q))
+    .slice(0, 8)
+})
+
+const typeMeta = { method: '方法', theory: '理论', dataset: '数据集', finding: '发现', tool: '工具' }
+function typeLabel(t) { return typeMeta[t] || (t ? String(t) : '') }
+
+function onSearchFocus() {
+  searchOpen.value = true
+}
+function onSearchBlur() {
+  // 延迟关闭，避免点击下拉项时先触发 blur
+  setTimeout(() => { searchOpen.value = false }, 120)
+}
+function onSearchInput() {
+  searchOpen.value = true
+  highlightIndex.value = -1
+}
+function moveHighlight(dir) {
+  const n = searchResults.value.length
+  if (!searchOpen.value || !n) return
+  highlightIndex.value = (highlightIndex.value + dir + n) % n
+}
+function onSearchEnter() {
+  if (searchOpen.value && searchResults.value.length && highlightIndex.value >= 0) {
+    selectResult(searchResults.value[highlightIndex.value])
+  } else if (!searchOpen.value && searchQuery.value) {
+    searchOpen.value = true
+  }
+}
+function closeSearch() {
+  searchOpen.value = false
+  highlightIndex.value = -1
+  searchQuery.value = ''
+}
+function selectResult(node) {
+  graphRef.value?.zoomToNode(node.id)
+  store.selectNode(node.id)
+  searchQuery.value = ''
+  searchOpen.value = false
+  highlightIndex.value = -1
+}
 
 onMounted(async () => {
   try {
@@ -338,5 +426,60 @@ async function exportMarkdown() {
 .weave-fade-leave-to {
   opacity: 0;
   transform: scale(0.985);
+}
+
+/* ── 图谱顶部搜索框：绝对定位居中，z-index 高于图谱低于工具栏(10) ── */
+.graph-search {
+  position: absolute;
+  top: var(--space-md);
+  left: 50%;
+  transform: translateX(-50%);
+  width: 320px;
+  max-width: 60vw;
+  z-index: 5;
+  padding: 4px;
+}
+.graph-search-input { width: 100%; }
+.gs-results, .gs-empty {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0; right: 0;
+  background: rgba(17, 24, 39, 0.97);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-elevated);
+  max-height: 280px;
+  overflow-y: auto;
+  padding: 4px;
+}
+.gs-item {
+  display: flex; align-items: center; gap: var(--space-sm);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-size: var(--text-sm);
+  color: var(--text-secondary);
+  transition: background var(--ease-out), color var(--ease-out);
+}
+.gs-item.hovered, .gs-item:hover {
+  background: rgba(255,255,255,0.06);
+  color: var(--text-primary);
+}
+.gs-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
+.gs-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.gs-type { font-size: var(--text-xs); color: var(--text-muted); flex-shrink: 0; }
+.gs-empty { padding: var(--space-md); text-align: center; color: var(--text-muted); font-size: var(--text-sm); }
+
+/* 下拉展开/收起（只用 transform/opacity） */
+.gs-drop-enter-active,
+.gs-drop-leave-active {
+  transition: opacity 200ms var(--ease-out), transform 200ms var(--ease-out);
+}
+.gs-drop-enter-from,
+.gs-drop-leave-to {
+  opacity: 0;
+  transform: translateY(-4px);
 }
 </style>
