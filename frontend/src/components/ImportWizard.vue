@@ -1,14 +1,14 @@
 <template>
   <div class="import-wizard">
-    <!-- 步骤指示器 -->
-    <div class="iw-steps">
-      <template v-for="(s, i) in steps" :key="s.key">
-        <div class="iw-step" :class="{ active: i === current, done: i < current }">
-          <span class="iw-dot">{{ i < current ? '✓' : i + 1 }}</span>
-          <span class="iw-label">{{ s.label }}</span>
-        </div>
-        <span v-if="i < steps.length - 1" class="iw-connector" :class="{ active: i < current }"></span>
-      </template>
+    <!-- 模式选择（四选一） -->
+    <div class="iw-modes">
+      <button v-for="(s, i) in steps" :key="s.key"
+        class="iw-mode" :class="{ active: i === current }"
+        type="button"
+        @click="current = i">
+        <span class="iw-mode-icon">{{ s.icon }}</span>
+        <span class="iw-mode-label">{{ s.label }}</span>
+      </button>
     </div>
 
     <!-- 步骤内容 -->
@@ -62,10 +62,10 @@ import UploadPanel from '@/components/UploadPanel.vue'
 const router = useRouter()
 
 const steps = [
-  { key: 'pdf', label: '上传 PDF' },
-  { key: 'text', label: '粘贴文本' },
-  { key: 'url', label: '网页链接' },
-  { key: 'manual', label: '手动创建' },
+  { key: 'pdf', label: '上传 PDF', icon: '📄' },
+  { key: 'text', label: '粘贴文本', icon: '📝' },
+  { key: 'url', label: '网页链接', icon: '🔗' },
+  { key: 'manual', label: '手动创建', icon: '✏️' },
 ]
 
 const current = ref(0)
@@ -138,74 +138,44 @@ async function handleManual() {
   width: 100%;
 }
 
-/* ── 步骤指示器 ── */
-.iw-steps {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 0;
+/* ── 模式选择区（四选一） ── */
+.iw-modes {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-sm);
   margin-bottom: var(--space-xl);
 }
 
-.iw-step {
+.iw-mode {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--space-sm);
-  min-width: 76px;
-}
-
-.iw-dot {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  border: 1px solid var(--border-strong);
-  background: rgba(255, 255, 255, 0.04);
+  padding: var(--space-md) var(--space-sm);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: rgba(255, 255, 255, 0.03);
   color: var(--text-muted);
-  font-size: var(--text-sm);
-  font-weight: 600;
-  font-family: var(--font-mono);
+  font-family: inherit;
+  cursor: pointer;
   transition: all var(--ease-out);
 }
 
-.iw-step.active .iw-dot {
+.iw-mode:hover {
+  border-color: var(--border-strong);
+  color: var(--text-primary);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.iw-mode.active {
   border-color: var(--vermilion);
-  background: var(--vermilion);
-  color: #fff;
+  color: var(--vermilion);
+  background: var(--vermilion-bg);
   box-shadow: var(--vermilion-glow);
 }
 
-.iw-step.done .iw-dot {
-  border-color: var(--emerald);
-  background: var(--emerald-bg);
-  color: var(--emerald);
-}
-
-.iw-label {
-  font-size: var(--text-xs);
-  color: var(--text-muted);
-  letter-spacing: 0.04em;
-  white-space: nowrap;
-  transition: color var(--ease-out);
-}
-
-.iw-step.active .iw-label { color: var(--vermilion); }
-.iw-step.done .iw-label { color: var(--text-secondary); }
-
-.iw-connector {
-  flex: 1;
-  max-width: 56px;
-  height: 1px;
-  background: var(--border-default);
-  margin: 0 var(--space-sm);
-  transform: translateY(-12px);
-  transition: background var(--ease-out);
-}
-
-.iw-connector.active { background: var(--emerald); }
+.iw-mode-icon { font-size: 22px; line-height: 1; }
+.iw-mode-label { font-size: var(--text-xs); letter-spacing: 0.04em; white-space: nowrap; }
 
 /* ── 内容区 ── */
 .iw-body {
