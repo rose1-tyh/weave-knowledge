@@ -90,6 +90,8 @@ watch(() => props.editing, () => {
 })
 // 过滤状态存 graph store（规格 F1）：Workbench/Explore 共享、跨视图切换保持；变化即重算视觉
 watch(() => graphStore.filterType, () => applyFilter())
+// "只看待确认"过滤：状态切换即重算视觉
+watch(() => graphStore.filterPending, () => applyFilter())
 // 多选集合变化 → 刷新节点选中视觉
 watch(() => graphStore.selectedNodeIds, refreshSelectionVisual, { deep: true })
 
@@ -369,6 +371,16 @@ function applyFilter() {
     const tgtOk = tgt && tgt.type === f
     return srcOk || tgtOk ? base : 0.05
   })
+
+  // "只看待确认"过滤：仅高亮待确认节点，其余淡出；连线整体淡化
+  const pf = graphStore.filterPending
+  if (pf) {
+    svg.selectAll('g g[data-role=node]').attr('opacity', function () {
+      const d = d3.select(this).datum()
+      return d.status === 'pending' ? 1 : 0.12
+    })
+    svg.selectAll('line[data-role=link]').attr('opacity', 0.05)
+  }
 }
 
 function highlightNode(id) {

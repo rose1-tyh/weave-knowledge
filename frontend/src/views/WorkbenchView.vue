@@ -45,6 +45,11 @@
             </div>
           </transition>
         </div>
+        <div class="verify-strip" v-if="store.graphData?.nodes?.length">
+          <span>{{ store.graphData.nodes.length }} 个概念</span>
+          <span class="vs-item" :class="{ warn: pendingCount > 0, active: store.filterPending }" @click="store.togglePendingFilter()">{{ pendingCount }} 待确认</span>
+          <span class="vs-item" :class="{ warn: lowConfCount > 0 }">{{ lowConfCount }} 低置信</span>
+        </div>
         <KnowledgeGraph
           v-if="activeView === 'graph'"
           ref="graphRef"
@@ -122,6 +127,7 @@
           @close="store.clearSelection"
           @confirm="onConfirmConcept(store.selectedNode.id)"
           @reject="onRejectConcept(store.selectedNode.id)"
+          @evidence="openEvidence(store.selectedNode.evidence)"
         />
         <RelationEditor
           v-else-if="store.selectedLink"
@@ -134,6 +140,7 @@
           @close="store.clearSelection"
           @confirm="onConfirmRelation(store.selectedLink.relId)"
           @reject="onRejectRelation(store.selectedLink.relId)"
+          @evidence="openEvidence(store.selectedLink.evidence)"
         />
         <ConceptEditor
           v-else-if="addingConcept"
@@ -151,6 +158,7 @@
         />
       </aside>
     </template>
+    <EvidenceDialog ref="evidenceDialogRef" :paper-id="paperId" />
     <Transition name="weave-fade">
       <WeaveExtraction v-if="showingWeave" />
     </Transition>
@@ -173,6 +181,8 @@ import ConceptList from '@/components/ConceptList.vue'
 import TreeView from '@/components/TreeView.vue'
 import MatrixView from '@/components/MatrixView.vue'
 import WeaveExtraction from '@/components/motion/WeaveExtraction.vue'
+import EvidenceDialog from '@/components/EvidenceDialog.vue'
+import { isLowConfidence } from '@/utils/confidence'
 import { exportJSON as apiExportJSON, exportMarkdown as apiExportMD, updateConcept, updateRelation } from '@/api'
 import { toPng } from 'html-to-image'
 
@@ -187,6 +197,14 @@ const graphRef = ref(null)
 const addingConcept = ref(false)
 const sidebarCollapsed = ref(false)
 const showingWeave = ref(false)
+const evidenceDialogRef = ref(null)
+function openEvidence(text) { evidenceDialogRef.value?.open(text) }
+
+// 低置信聚合：待确认数 + 低置信数（供评审演示）
+const pendingCount = computed(() =>
+  store.graphData?.nodes?.filter(n => n.status !== 'confirmed').length ?? 0)
+const lowConfCount = computed(() =>
+  store.graphData?.nodes?.filter(n => isLowConfidence(n.confidence)).length ?? 0)
 
 // 多选面板数据：由选中 id 集合映射到当前图谱节点
 const selectedNodes = computed(() => {
@@ -537,6 +555,11 @@ async function exportMarkdown() {
   padding: 4px;
 }
 .graph-search-input { width: 100%; }
+
+/* ── 低置信聚合条：绝对定位于图谱左上，与搜索框同级 ── */
+.verify-strip { position: absolute; top: var(--space-md); left: var(--space-md); z-index: 5; display: flex; gap: var(--space-sm); align-items: center; font-size: var(--text-xs); color: var(--text-muted); padding: 6px 12px; border-radius: var(--radius-md); background: var(--space-elevated); border: 1px solid var(--border-subtle); }
+.verify-strip .vs-item.warn { color: #f59e0b; }
+.verify-strip .vs-item.active { color: #fff; background: rgba(255,255,255,0.1); cursor: pointer; }
 .gs-results, .gs-empty {
   position: absolute;
   top: calc(100% + 6px);

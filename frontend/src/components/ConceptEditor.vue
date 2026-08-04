@@ -21,7 +21,7 @@
       </div>
       <div v-if="concept.evidence" class="ce-evidence">
         <span class="ce-evidence-label">原文片段</span>
-        <p class="ce-evidence-text">{{ concept.evidence }}</p>
+        <p class="ce-evidence-text" @click="$emit('evidence')">{{ concept.evidence }}</p>
       </div>
       <div v-if="concept.status !== 'confirmed'" class="ce-confirm-actions">
         <el-button size="small" type="primary" data-test="confirm" @click="$emit('confirm')">确认</el-button>
@@ -63,7 +63,7 @@ const props = defineProps({
   concept: { type: Object, default: null },
   editing: Boolean,
 })
-defineEmits(['save', 'delete', 'close', 'confirm', 'reject'])
+defineEmits(['save', 'delete', 'close', 'confirm', 'reject', 'evidence'])
 
 const typeMeta = {
   method: { label: '研究方法', color: '#e8453c' },
@@ -114,6 +114,6 @@ watch(() => props.concept, (c) => {
 .ce-lowhint { font-size: var(--text-xs); color: #f59e0b; margin-bottom: var(--space-sm); }
 .ce-evidence { margin-bottom: var(--space-lg); }
 .ce-evidence-label { font-size: var(--text-xs); color: var(--text-muted); }
-.ce-evidence-text { font-size: var(--text-sm); color: var(--text-secondary); font-style: italic; border-left: 2px solid var(--vermilion); padding-left: var(--space-sm); margin-top: 4px; line-height: 1.6; }
+.ce-evidence-text { font-size: var(--text-sm); color: var(--text-secondary); font-style: italic; border-left: 2px solid var(--vermilion); padding-left: var(--space-sm); margin-top: 4px; line-height: 1.6; cursor: pointer; }
 .ce-confirm-actions { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); }
 </style>

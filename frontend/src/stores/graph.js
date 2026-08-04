@@ -73,11 +73,14 @@ export const useGraphStore = defineStore('graph', () => {
     selectedNodeIds.value = ids
   }
 
+  const filterPending = ref(false)
+  function togglePendingFilter() { filterPending.value = !filterPending.value }
+
   return {
     paperTitle, graphData, selectedNodeId, selectedLinkIndex,
     selectedNode, selectedLink, loading, error,
     loadGraph, runExtraction, selectNode, selectLink, clearSelection,
-    filterType, selectedNodeIds,
-    toggleFilter, setFilter, toggleMultiSelect, clearMultiSelect, setSelectedNodes,
+    filterType, selectedNodeIds, filterPending,
+    toggleFilter, setFilter, toggleMultiSelect, clearMultiSelect, setSelectedNodes, togglePendingFilter,
   }
 })

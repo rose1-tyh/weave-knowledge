@@ -29,4 +29,11 @@ describe('graph store 交互状态', () => {
     s.setSelectedNodes(['x', 'y'])
     expect(s.selectedNodeIds).toEqual(['x', 'y'])
   })
+
+  it('togglePendingFilter 切换', () => {
+    const s = useGraphStore()
+    expect(s.filterPending).toBe(false)
+    s.togglePendingFilter()
+    expect(s.filterPending).toBe(true)
+  })
 })

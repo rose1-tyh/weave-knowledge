@@ -11,7 +11,7 @@
       <span class="re-arrow">→</span>
       <span class="re-node-label">{{ targetName }}</span>
     </div>
-    <p class="re-evidence" v-if="link.evidence">"{{ link.evidence }}"</p>
+    <p class="re-evidence" v-if="link.evidence" @click="$emit('evidence')">"{{ link.evidence }}"</p>
     <div class="re-status-row">
       <span class="re-status-badge" :class="link.status">{{ statusLabel(link.status) }}</span>
       <span class="re-conf">置信度 {{ confPercent(link.confidence) }}</span>
@@ -47,7 +47,7 @@ const props = defineProps({
   nodes: { type: Array, default: () => [] },
   editing: Boolean,
 })
-defineEmits(['save', 'delete', 'close', 'confirm', 'reject'])
+defineEmits(['save', 'delete', 'close', 'confirm', 'reject', 'evidence'])
 
 const relLabels = { supports: '支撑', contradicts: '矛盾', extends: '扩展', cites: '引用', uses: '使用' }
 const relColors = { supports: '#10b981', contradicts: '#e8453c', extends: '#f59e0b', cites: '#6b7280', uses: '#00d4ff' }
@@ -76,7 +76,7 @@ watch(() => props.link, (l) => {
 .re-chain { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md); font-size: var(--text-md); }
 .re-node-label { color: var(--text-primary); font-weight: 600; }
 .re-arrow { color: var(--text-muted); }
-.re-evidence { font-size: var(--text-sm); color: var(--text-secondary); font-style: italic; line-height: 1.6; margin-bottom: var(--space-lg); }
+.re-evidence { font-size: var(--text-sm); color: var(--text-secondary); font-style: italic; line-height: 1.6; margin-bottom: var(--space-lg); cursor: pointer; }
 .re-form { display: flex; flex-direction: column; gap: 6px; }
 .re-form label { font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--space-sm); }
 .re-select, .re-textarea {
