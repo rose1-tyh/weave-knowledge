@@ -51,6 +51,14 @@ export function addRelation(paperId, data) { return api.post(`/graph/${paperId}/
 export function updateRelation(paperId, id, data) { return api.put(`/graph/${paperId}/relations/${id}`, data) }
 export function deleteRelation(paperId, id) { return api.delete(`/graph/${paperId}/relations/${id}`) }
 
+// ── 可信抽取 ──
+export function evidenceContext(paperId, evidence) {
+  return api.post(`/papers/${paperId}/evidence-context`, { evidence })
+}
+export function backfillConfidence(paperId) {
+  return api.post('/system/backfill-confidence', null, { params: paperId ? { paper_id: paperId } : {} })
+}
+
 // ── 全局探索 ──
 export function fusionGraph(paperIds) { return api.post('/explore/fusion', { paper_ids: paperIds }) }
 export function searchConcepts(query) { return api.get('/explore/search', { params: { q: query } }) }

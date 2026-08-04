@@ -11,6 +11,11 @@
         </span>
       </div>
       <div class="legend-row">
+        <span class="legend-label">状态</span>
+        <span class="legend-chip"><i class="legend-seal"></i>人工验证</span>
+        <span class="legend-chip"><i class="legend-dash"></i>待确认/低置信</span>
+      </div>
+      <div class="legend-row">
         <span class="legend-label">关系</span>
         <span v-for="t in relationTypes" :key="t.key" class="legend-chip">
           <i :style="{ background: t.color }"></i>{{ t.label }}
@@ -24,6 +29,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as d3 from 'd3'
 import { nodeStroke } from '@/utils/fusion'
+import { nodeStatusVisual } from '@/utils/confidence'
 import { useGraphStore } from '@/stores/graph'
 
 const props = defineProps({
@@ -156,11 +162,12 @@ function render() {
   // 边
   const linkG = g.append('g')
   const linkLines = linkG.selectAll('line').data(links).join('line')
+    .attr('class', d => nodeStatusVisual(d).dashed ? 'link-dashed' : 'link-solid')
     .attr('data-role', 'link')
     .attr('stroke', d => d.color || 'rgba(255,255,255,0.2)')
     .attr('stroke-opacity', 0.6)
     .attr('stroke-width', d => d.type === 'contradicts' ? 2 : 1.2)
-    .attr('stroke-dasharray', d => d.type === 'contradicts' ? '8,4' : null)
+    .attr('opacity', d => nodeStatusVisual(d).opacity)
     .style('cursor', 'pointer')
     .on('click', (e, d) => {
       e.stopPropagation()
@@ -254,6 +261,8 @@ function render() {
     .attr('fill', '#111827')
     .attr('stroke', d => nodeStroke(d))
     .attr('stroke-width', 2)
+    .attr('stroke-dasharray', d => nodeStatusVisual(d).dashed ? '4,3' : null)
+    .attr('opacity', d => nodeStatusVisual(d).opacity)
     .attr('style', d => `filter: drop-shadow(0 0 6px ${d.color})`)
 
   // 选中发光环
@@ -275,6 +284,19 @@ function render() {
     .attr('font-weight', 500)
     .attr('pointer-events', 'none')
     .attr('style', 'text-shadow: 0 0 4px rgba(0,0,0,0.8)')
+
+  // 已确认节点印章（append 在 text 之后，位于节点组最上层）
+  const sealG = nodeGroups.filter(d => nodeStatusVisual(d).seal).append('g')
+    .attr('class', 'node-seal')
+    .attr('pointer-events', 'none')
+  sealG.append('rect')
+    .attr('x', -7).attr('y', 20).attr('width', 14).attr('height', 12).attr('rx', 2)
+    .attr('fill', 'none').attr('stroke', '#e8453c').attr('stroke-width', 1.2)
+  sealG.append('text')
+    .attr('x', 0).attr('y', 29.5)
+    .attr('text-anchor', 'middle').attr('font-size', 8).attr('font-weight', 700)
+    .attr('fill', '#e8453c')
+    .text('验')
 
   // 提示信息
   const tip = tooltip.value
@@ -338,12 +360,14 @@ function applyFilter() {
   })
   svg.selectAll('line[data-role=link]').attr('opacity', function () {
     const d = d3.select(this).datum()
-    if (!f) return 1
+    // 以状态透明度为基数（已确认实色/未确认按置信度虚化），过滤时再叠加
+    const base = nodeStatusVisual(d).opacity
+    if (!f) return base
     const src = typeof d.source === 'object' ? d.source : null
     const tgt = typeof d.target === 'object' ? d.target : null
     const srcOk = src && src.type === f
     const tgtOk = tgt && tgt.type === f
-    return srcOk || tgtOk ? 1 : 0.05
+    return srcOk || tgtOk ? base : 0.05
   })
 }
 
@@ -565,11 +589,9 @@ defineExpose({ zoomBy, resetZoom, zoomToNode })
   50% { r: 20; }
 }
 
-/* 连线流动动画 */
-:deep(g line) {
-  animation: link-flow 4s linear infinite;
-  stroke-dasharray: 6 4;
-}
+/* 连线流动动画：已确认实线不流动；未确认虚线流动 */
+:deep(g line.link-dashed) { animation: link-flow 4s linear infinite; stroke-dasharray: 6 4; }
+:deep(g line.link-solid) { stroke-dasharray: none; }
 @keyframes link-flow {
   to { stroke-dashoffset: -20; }
 }
@@ -595,5 +617,7 @@ defineExpose({ zoomBy, resetZoom, zoomToNode })
 .legend-chip:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
 .legend-chip.active { color: #fff; background: rgba(255,255,255,0.12); }
 .legend-chip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.legend-row .legend-seal { width: 10px; height: 10px; border: 1px solid #e8453c; border-radius: 2px; background: transparent; }
+.legend-row .legend-dash { width: 14px; height: 2px; border-top: 2px dashed rgba(255,255,255,0.5); background: transparent; border-radius: 0; }
 .legend-row:last-child .legend-chip i { width: 14px; height: 2px; border-radius: 1px; }
 </style>
