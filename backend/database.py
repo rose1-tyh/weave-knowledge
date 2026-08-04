@@ -75,6 +75,37 @@ async def init_db():
             UNIQUE(concept_name_a, paper_id_a, concept_name_b, paper_id_b)
         );
     """)
+    await migrate_schema(db)
+    await db.commit()
+
+
+# 幂等迁移：表名 → 需补充的列定义（SQLite 无 IF NOT EXISTS for ADD COLUMN）
+MIGRATIONS = {
+    "papers": ["text TEXT DEFAULT ''"],
+    "concepts": [
+        "evidence TEXT DEFAULT ''",
+        "confidence REAL DEFAULT 0.5",
+        "confidence_ai REAL",
+        "status TEXT DEFAULT 'pending'",
+    ],
+    "relations": [
+        "confidence REAL DEFAULT 0.5",
+        "confidence_ai REAL",
+        "status TEXT DEFAULT 'pending'",
+        "page INTEGER",
+    ],
+}
+
+
+async def migrate_schema(db):
+    """幂等迁移：对缺失列执行 ALTER TABLE ADD COLUMN"""
+    for table, columns in MIGRATIONS.items():
+        rows = await db.execute_fetchall(f"PRAGMA table_info({table})")
+        existing = {r["name"] for r in rows}
+        for col in columns:
+            col_name = col.split(" ")[0]
+            if col_name not in existing:
+                await db.execute(f"ALTER TABLE {table} ADD COLUMN {col}")
     await db.commit()
 
 
