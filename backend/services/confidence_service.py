@@ -78,3 +78,38 @@ def enrich(raw: dict, text: str) -> dict:
             "confidence": final_confidence(r.get("confidence"), signal),
         })
     return {"concepts": new_concepts, "relations": new_relations}
+
+
+async def backfill_paper_confidences(db, paper_id: str) -> dict:
+    """重算一篇论文全部概念/关系的置信度（纯文本信号，confidence_ai 置 NULL）。
+
+    供存量数据回填；无正文可算信号时跳过。
+    """
+    rows = await db.execute_fetchall("SELECT text FROM papers WHERE id = ?", [paper_id])
+    text = rows[0]["text"] if rows else ""
+    if not text:
+        return {"concepts": 0, "relations": 0}
+
+    concepts = [dict(r) for r in await db.execute_fetchall(
+        "SELECT * FROM concepts WHERE paper_id = ?", [paper_id])]
+    relations = [dict(r) for r in await db.execute_fetchall(
+        "SELECT * FROM relations WHERE paper_id = ?", [paper_id])]
+
+    signals = {}
+    for c in concepts:
+        s = text_signal_for_concept(c["name"], text)
+        signals[c["slug"]] = s
+        await db.execute(
+            "UPDATE concepts SET confidence = ?, confidence_ai = NULL WHERE paper_id = ? AND slug = ?",
+            [s, paper_id, c["slug"]])
+
+    for r in relations:
+        src = signals.get(r["source_slug"], 0.0)
+        tgt = signals.get(r["target_slug"], 0.0)
+        s = text_signal_for_relation(r["evidence"], src, tgt, text)
+        await db.execute(
+            "UPDATE relations SET confidence = ?, confidence_ai = NULL WHERE paper_id = ? AND id = ?",
+            [s, paper_id, r["id"]])
+
+    await db.commit()
+    return {"concepts": len(concepts), "relations": len(relations)}

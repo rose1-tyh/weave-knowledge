@@ -5,12 +5,14 @@ from fastapi import APIRouter, HTTPException
 from models.schemas import (
     R, ExtractRequest, ConceptCreate, ConceptUpdate,
     RelationCreate, RelationUpdate, FusionRequest, MergeSuggestRequest,
-    TextExtractRequest, UrlExtractRequest,
+    TextExtractRequest, UrlExtractRequest, EvidenceContextRequest,
 )
 from services.ai_service import AIService
 from services.graph_service import GraphService
 from services.library_service import LibraryService
 from services.parser_registry import get_parser_for_paper
+from services.confidence_service import backfill_paper_confidences
+from services.evidence_service import evidence_context_for_paper
 import uuid
 import requests
 from bs4 import BeautifulSoup
@@ -216,7 +218,7 @@ async def update_concept(paper_id: str, slug: str, req: ConceptUpdate):
     db = await get_db()
     updates = []
     params = []
-    for key in ["name", "definition", "type", "page"]:
+    for key in ["name", "definition", "type", "page", "status"]:
         val = getattr(req, key, None)
         if val is not None:
             updates.append(f"{key} = ?")
@@ -274,6 +276,8 @@ async def update_relation(paper_id: str, rel_id: int, req: RelationUpdate):
         updates.append("type = ?"); params.append(req.type)
     if req.evidence is not None:
         updates.append("evidence = ?"); params.append(req.evidence)
+    if req.status is not None:
+        updates.append("status = ?"); params.append(req.status)
     if not updates:
         return R.success()
     updates.append("updated_at = ?"); params.append(datetime.now().isoformat())
@@ -481,3 +485,43 @@ async def export_markdown(paper_id: str):
     """导出知识摘要 Markdown"""
     md = await ExportService.export_markdown(paper_id)
     return R.success(data=md)
+
+
+# ── 存量置信度回填 / 证据上下文 ──
+
+@router.post("/system/backfill-confidence")
+async def backfill_confidence(paper_id: str = ""):
+    """存量论文置信度回填（纯文本信号）；指定 paper_id 则只处理该篇"""
+    from database import get_db
+    db = await get_db()
+    if paper_id:
+        ids = [paper_id]
+    else:
+        rows = await db.execute_fetchall("SELECT id FROM papers")
+        ids = [r["id"] for r in rows]
+
+    total_c = total_r = 0
+    processed = 0
+    for pid in ids:
+        # 无正文且可解析的论文：补正文
+        t = await db.execute_fetchall("SELECT text FROM papers WHERE id = ?", [pid])
+        if not t or not t[0]["text"]:
+            parser = get_parser_for_paper(pid)
+            if parser:
+                try:
+                    parsed = parser.extract(pid)
+                    await LibraryService.update_paper_text(pid, parsed["full_text"])
+                except Exception:
+                    continue
+        result = await backfill_paper_confidences(db, pid)
+        total_c += result["concepts"]; total_r += result["relations"]
+        processed += 1
+    return R.success(data={"processed": processed, "concepts": total_c, "relations": total_r})
+
+
+@router.post("/papers/{paper_id}/evidence-context")
+async def evidence_context(paper_id: str, req: EvidenceContextRequest):
+    """返回证据串在原文中的上下文与页码；无正文/找不到时 found=False"""
+    from database import get_db
+    db = await get_db()
+    return R.success(data=await evidence_context_for_paper(db, paper_id, req.evidence))

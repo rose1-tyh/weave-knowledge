@@ -50,6 +50,7 @@ class ConceptUpdate(BaseModel):
     definition: Optional[str] = None
     type: Optional[str] = None
     page: Optional[int] = None
+    status: Optional[str] = None
 
 class RelationCreate(BaseModel):
     source_slug: str
@@ -60,6 +61,10 @@ class RelationCreate(BaseModel):
 class RelationUpdate(BaseModel):
     type: Optional[str] = None
     evidence: Optional[str] = None
+    status: Optional[str] = None
+
+class EvidenceContextRequest(BaseModel):
+    evidence: str
 
 # ── 文本/URL 提取 ──
 
