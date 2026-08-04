@@ -35,8 +35,9 @@ def text_signal_for_concept(name: str, text: str) -> float:
 
 
 def text_signal_for_relation(evidence: str, source_signal: float, target_signal: float, text: str) -> float:
-    """关系文本信号：证据能否在全文定位 × 两端概念信号均值"""
-    locatable = 1.0 if evidence and evidence.strip() and evidence.strip() in text else 0.5
+    """关系文本信号：证据能否在全文定位（与证据服务一致的模糊匹配）× 两端概念信号均值"""
+    from services.evidence_service import locate_evidence
+    locatable = 1.0 if locate_evidence(text, evidence) else 0.0
     endpoints = (source_signal + target_signal) / 2.0
     return round(0.5 * locatable + 0.5 * endpoints, 2)
 

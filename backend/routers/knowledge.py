@@ -360,23 +360,25 @@ async def fusion_graph(req: FusionRequest):
             continue
         # slug → 概念名（用于把跨论文链接重映射到合并后的节点 id）
         slug_to_name = {n["id"]: n["name"] for n in gdata["nodes"]}
-        # 合并节点，标记来源
+        # 合并节点，标记来源（剥离每篇论文的信任字段：融合视图无确认工作流，避免全部渲染成虚线/虚化）
         for node in gdata["nodes"]:
+            clean = {k: v for k, v in node.items() if k not in ("status", "confidence", "confidence_ai", "evidence")}
             key = node["name"]
             if key not in all_concepts:
-                all_concepts[key] = {**node, "paperIds": [pid], "paperTitles": [paper["title"]]}
+                all_concepts[key] = {**clean, "paperIds": [pid], "paperTitles": [paper["title"]]}
             else:
                 if pid not in all_concepts[key]["paperIds"]:
                     all_concepts[key]["paperIds"].append(pid)
                     all_concepts[key]["paperTitles"].append(paper["title"])
-        # 合并关系：source/target 按概念名重映射到合并节点的 id
+        # 合并关系：source/target 按概念名重映射到合并节点的 id（同样剥离信任字段）
         for link in gdata["links"]:
             src_name = slug_to_name.get(link["source"], link["source"])
             tgt_name = slug_to_name.get(link["target"], link["target"])
             src_node = all_concepts.get(src_name)
             tgt_node = all_concepts.get(tgt_name)
             if src_node and tgt_node:
-                all_relations.append({**link, "source": src_node["id"], "target": tgt_node["id"]})
+                clean = {k: v for k, v in link.items() if k not in ("status", "confidence", "confidence_ai", "page")}
+                all_relations.append({**clean, "source": src_node["id"], "target": tgt_node["id"]})
 
     nodes = list(all_concepts.values())
     return R.success(data={

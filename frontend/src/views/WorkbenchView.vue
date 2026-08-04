@@ -202,7 +202,7 @@ function openEvidence(text) { evidenceDialogRef.value?.open(text) }
 
 // 低置信聚合：待确认数 + 低置信数（供评审演示）
 const pendingCount = computed(() =>
-  store.graphData?.nodes?.filter(n => n.status !== 'confirmed').length ?? 0)
+  store.graphData?.nodes?.filter(n => n.status === 'pending').length ?? 0)
 const lowConfCount = computed(() =>
   store.graphData?.nodes?.filter(n => isLowConfidence(n.confidence)).length ?? 0)
 
@@ -277,6 +277,7 @@ onMounted(async () => {
       showingWeave.value = true          // 显示织网动画
       try {
         await store.runExtraction(paperId)   // 同步等待真实结果
+        await reload()                        // 提取响应无 relId，重载获取 DB id（关系确认/编辑依赖）
         // 成功：让织网动画收尾，再淡出露出真实图谱
         await delay(600)
       } finally {

@@ -1,7 +1,7 @@
 """Pydantic 数据模型"""
 
 from pydantic import BaseModel
-from typing import Optional, List
+from typing import Optional, List, Literal
 
 
 # ── 统一响应 ──
@@ -50,7 +50,7 @@ class ConceptUpdate(BaseModel):
     definition: Optional[str] = None
     type: Optional[str] = None
     page: Optional[int] = None
-    status: Optional[str] = None
+    status: Optional[Literal["pending", "confirmed", "rejected"]] = None
 
 class RelationCreate(BaseModel):
     source_slug: str
@@ -61,7 +61,7 @@ class RelationCreate(BaseModel):
 class RelationUpdate(BaseModel):
     type: Optional[str] = None
     evidence: Optional[str] = None
-    status: Optional[str] = None
+    status: Optional[Literal["pending", "confirmed", "rejected"]] = None
 
 class EvidenceContextRequest(BaseModel):
     evidence: str

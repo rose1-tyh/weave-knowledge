@@ -33,6 +33,8 @@ const highlighted = computed(() => {
   if (!data.value?.context) return ''
   const { context, start, end } = data.value
   const esc = s => s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+  // start/end 缺失或非整数（异常响应）→ 渲染转义后的完整上下文，避免 <mark> 切片错乱
+  if (!Number.isInteger(start) || !Number.isInteger(end)) return esc(context)
   return `${esc(context.slice(0, start))}<mark class="ev-hit">${esc(context.slice(start, end))}</mark>${esc(context.slice(end))}`
 })
 

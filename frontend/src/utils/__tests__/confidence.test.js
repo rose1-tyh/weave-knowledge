@@ -28,6 +28,12 @@ describe('confidence utils', () => {
     expect(v.opacity).toBeGreaterThan(0.7)
   })
 
+  it('无信任字段（融合/旧数据）→ 中性：不盖章、不虚、全不透明', () => {
+    const v = nodeStatusVisual({ name: 'x' })
+    expect(v).toEqual({ seal: false, dashed: false, opacity: 1 })
+    expect(nodeStatusVisual(null)).toEqual({ seal: false, dashed: false, opacity: 1 })
+  })
+
   it('状态与置信度文案', () => {
     expect(statusLabel('confirmed')).toBe('已确认')
     expect(statusLabel(undefined)).toBe('待确认')
