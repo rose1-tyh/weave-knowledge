@@ -104,9 +104,12 @@ class LibraryService:
         now = datetime.now().isoformat()
         for c in concepts:
             await db.execute(
-                "INSERT OR REPLACE INTO concepts (paper_id, slug, name, definition, type, page, created_by, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, ?, 'ai', ?, ?)",
-                [paper_id, c["id"], c["name"], c["definition"], c["type"], c["page"], now, now]
+                "INSERT OR REPLACE INTO concepts "
+                "(paper_id, slug, name, definition, type, page, evidence, confidence, confidence_ai, status, created_by, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'ai', ?, ?)",
+                [paper_id, c["id"], c["name"], c["definition"], c["type"], c["page"],
+                 c.get("evidence", ""), c.get("confidence", 0.5), c.get("confidence_ai"),
+                 c.get("status", "pending"), now, now]
             )
         await db.commit()
 
@@ -116,10 +119,19 @@ class LibraryService:
         now = datetime.now().isoformat()
         for r in relations:
             await db.execute(
-                "INSERT INTO relations (paper_id, source_slug, target_slug, type, evidence, created_by, created_at, updated_at) "
-                "VALUES (?, ?, ?, ?, ?, 'ai', ?, ?)",
-                [paper_id, r["source"], r["target"], r["type"], r["evidence"], now, now]
+                "INSERT INTO relations "
+                "(paper_id, source_slug, target_slug, type, evidence, page, confidence, confidence_ai, status, created_by, created_at, updated_at) "
+                "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'ai', ?, ?)",
+                [paper_id, r["source"], r["target"], r["type"], r.get("evidence", ""),
+                 r.get("page"), r.get("confidence", 0.5), r.get("confidence_ai"),
+                 r.get("status", "pending"), now, now]
             )
+        await db.commit()
+
+    @staticmethod
+    async def update_paper_text(paper_id: str, text: str):
+        db = await get_db()
+        await db.execute("UPDATE papers SET text = ? WHERE id = ?", [text, paper_id])
         await db.commit()
 
     @staticmethod
@@ -153,6 +165,10 @@ class LibraryService:
             "type": c["type"],
             "color": type_colors.get(c["type"], "#6b7280"),
             "page": c["page"],
+            "evidence": c.get("evidence", ""),
+            "confidence": c.get("confidence", 0.5),
+            "confidence_ai": c.get("confidence_ai"),
+            "status": c.get("status", "pending"),
         } for c in concepts]
 
         links = [{
@@ -162,6 +178,10 @@ class LibraryService:
             "color": rel_colors.get(r["type"], "#6b7280"),
             "evidence": r["evidence"],
             "relId": r["id"],
+            "confidence": r.get("confidence", 0.5),
+            "confidence_ai": r.get("confidence_ai"),
+            "status": r.get("status", "pending"),
+            "page": r.get("page"),
         } for r in relations]
 
         return {

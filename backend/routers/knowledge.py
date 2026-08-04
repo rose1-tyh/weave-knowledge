@@ -7,30 +7,16 @@ from models.schemas import (
     RelationCreate, RelationUpdate, FusionRequest, MergeSuggestRequest,
     TextExtractRequest, UrlExtractRequest,
 )
-from services.pdf_service import PDFService
-from services.docx_service import DocxService
 from services.ai_service import AIService
 from services.graph_service import GraphService
 from services.library_service import LibraryService
-import os
+from services.parser_registry import get_parser_for_paper
 import uuid
 import requests
 from bs4 import BeautifulSoup
-from config import PAPER_STORAGE_DIR
 
 router = APIRouter(prefix="/api", tags=["knowledge"])
-pdf_service = PDFService()
-docx_service = DocxService()
 ai_service = AIService()
-
-
-def _get_parser_for_paper(paper_id: str):
-    """按存储的物理文件选择解析服务（PDF / DOCX）；无文件返回 None"""
-    if os.path.exists(os.path.join(PAPER_STORAGE_DIR, f"{paper_id}.pdf")):
-        return pdf_service
-    if os.path.exists(os.path.join(PAPER_STORAGE_DIR, f"{paper_id}.docx")):
-        return docx_service
-    return None
 
 
 def _relations_with_slugs(graph) -> list[dict]:
@@ -50,7 +36,7 @@ def _relations_with_slugs(graph) -> list[dict]:
 @router.post("/extract")
 async def extract_knowledge(req: ExtractRequest):
     """对已上传的论文（PDF / DOCX）执行 AI 知识提取，结果写入 DB"""
-    parser = _get_parser_for_paper(req.paper_id)
+    parser = get_parser_for_paper(req.paper_id)
     if parser is None:
         raise HTTPException(404, detail="论文不存在")
     try:
@@ -58,6 +44,7 @@ async def extract_knowledge(req: ExtractRequest):
     except FileNotFoundError:
         raise HTTPException(404, detail="论文不存在")
 
+    await LibraryService.update_paper_text(req.paper_id, paper["full_text"])
     await LibraryService.update_extract_status(req.paper_id, "processing")
 
     try:
@@ -100,6 +87,7 @@ async def extract_from_text(req: TextExtractRequest):
         page_count=1,
         text_length=len(req.text),
     )
+    await LibraryService.update_paper_text(paper_id, req.text)
     await LibraryService.update_extract_status(paper_id, "processing")
 
     try:
@@ -153,6 +141,7 @@ async def extract_from_url(req: UrlExtractRequest):
         paper_id=paper_id, title=title, filename=req.url,
         page_count=1, text_length=len(text),
     )
+    await LibraryService.update_paper_text(paper_id, text)
     await LibraryService.update_extract_status(paper_id, "processing")
 
     try:
