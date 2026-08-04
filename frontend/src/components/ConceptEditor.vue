@@ -10,9 +10,22 @@
     <template v-if="!editing && concept">
       <!-- 只读模式 -->
       <h3 class="ce-name">{{ concept.name }}</h3>
+      <div class="ce-status-row">
+        <span class="ce-status-badge" :class="concept.status">{{ statusLabel(concept.status) }}</span>
+        <span class="ce-conf">置信度 {{ confPercent(concept.confidence) }}</span>
+      </div>
+      <p v-if="isLowConfidence(concept.confidence)" class="ce-lowhint">低置信，建议人工确认</p>
       <p class="ce-def">{{ concept.definition }}</p>
       <div class="ce-meta">
         <span>原文页码：第 {{ concept.page }} 页</span>
+      </div>
+      <div v-if="concept.evidence" class="ce-evidence">
+        <span class="ce-evidence-label">原文片段</span>
+        <p class="ce-evidence-text">{{ concept.evidence }}</p>
+      </div>
+      <div v-if="concept.status !== 'confirmed'" class="ce-confirm-actions">
+        <el-button size="small" type="primary" data-test="confirm" @click="$emit('confirm')">确认</el-button>
+        <el-button size="small" data-test="reject" @click="$emit('reject')">驳回</el-button>
       </div>
     </template>
 
@@ -44,12 +57,13 @@
 
 <script setup>
 import { ref, watch } from 'vue'
+import { isLowConfidence, statusLabel, confPercent } from '@/utils/confidence'
 
 const props = defineProps({
   concept: { type: Object, default: null },
   editing: Boolean,
 })
-defineEmits(['save', 'delete', 'close'])
+defineEmits(['save', 'delete', 'close', 'confirm', 'reject'])
 
 const typeMeta = {
   method: { label: '研究方法', color: '#e8453c' },
@@ -91,4 +105,15 @@ watch(() => props.concept, (c) => {
 .ce-input:focus, .ce-textarea:focus { border-color: var(--vermilion); }
 .ce-actions { display: flex; gap: var(--space-sm); margin-top: var(--space-lg); }
 .ce-empty { color: var(--text-muted); font-size: var(--text-sm); text-align: center; padding: var(--space-xl) 0; }
+.ce-status-row { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm); }
+.ce-status-badge { padding: 2px 8px; border-radius: 12px; font-size: var(--text-xs); font-weight: 600; }
+.ce-status-badge.pending { color: #f59e0b; border: 1px solid #f59e0b; }
+.ce-status-badge.confirmed { color: #10b981; border: 1px solid #10b981; }
+.ce-status-badge.rejected { color: var(--text-muted); border: 1px solid var(--border-strong); }
+.ce-conf { font-size: var(--text-xs); color: var(--text-muted); }
+.ce-lowhint { font-size: var(--text-xs); color: #f59e0b; margin-bottom: var(--space-sm); }
+.ce-evidence { margin-bottom: var(--space-lg); }
+.ce-evidence-label { font-size: var(--text-xs); color: var(--text-muted); }
+.ce-evidence-text { font-size: var(--text-sm); color: var(--text-secondary); font-style: italic; border-left: 2px solid var(--vermilion); padding-left: var(--space-sm); margin-top: 4px; line-height: 1.6; }
+.ce-confirm-actions { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); }
 </style>

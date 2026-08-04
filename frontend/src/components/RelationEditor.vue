@@ -12,6 +12,15 @@
       <span class="re-node-label">{{ targetName }}</span>
     </div>
     <p class="re-evidence" v-if="link.evidence">"{{ link.evidence }}"</p>
+    <div class="re-status-row">
+      <span class="re-status-badge" :class="link.status">{{ statusLabel(link.status) }}</span>
+      <span class="re-conf">置信度 {{ confPercent(link.confidence) }}</span>
+    </div>
+    <p v-if="isLowConfidence(link.confidence)" class="re-lowhint">低置信，建议人工确认</p>
+    <div v-if="link.status !== 'confirmed'" class="re-confirm-actions">
+      <el-button size="small" type="primary" data-test="confirm" @click="$emit('confirm')">确认</el-button>
+      <el-button size="small" data-test="reject" @click="$emit('reject')">驳回</el-button>
+    </div>
 
     <div v-if="editing" class="re-form">
       <label>关系类型</label>
@@ -30,6 +39,7 @@
 
 <script setup>
 import { ref, computed, watch } from 'vue'
+import { isLowConfidence, statusLabel, confPercent } from '@/utils/confidence'
 
 const props = defineProps({
   link: { type: Object, default: null },
@@ -37,7 +47,7 @@ const props = defineProps({
   nodes: { type: Array, default: () => [] },
   editing: Boolean,
 })
-defineEmits(['save', 'delete', 'close'])
+defineEmits(['save', 'delete', 'close', 'confirm', 'reject'])
 
 const relLabels = { supports: '支撑', contradicts: '矛盾', extends: '扩展', cites: '引用', uses: '使用' }
 const relColors = { supports: '#10b981', contradicts: '#e8453c', extends: '#f59e0b', cites: '#6b7280', uses: '#00d4ff' }
@@ -81,4 +91,12 @@ watch(() => props.link, (l) => {
 }
 .re-select:focus, .re-textarea:focus { border-color: var(--vermilion); }
 .re-actions { display: flex; gap: var(--space-sm); margin-top: var(--space-lg); }
+.re-status-row { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-sm); }
+.re-status-badge { padding: 2px 8px; border-radius: 12px; font-size: var(--text-xs); font-weight: 600; }
+.re-status-badge.pending { color: #f59e0b; border: 1px solid #f59e0b; }
+.re-status-badge.confirmed { color: #10b981; border: 1px solid #10b981; }
+.re-status-badge.rejected { color: var(--text-muted); border: 1px solid var(--border-strong); }
+.re-conf { font-size: var(--text-xs); color: var(--text-muted); }
+.re-lowhint { font-size: var(--text-xs); color: #f59e0b; margin-bottom: var(--space-sm); }
+.re-confirm-actions { display: flex; gap: var(--space-sm); margin-top: var(--space-sm); }
 </style>

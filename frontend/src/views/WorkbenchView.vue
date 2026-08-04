@@ -120,6 +120,8 @@
           @save="onSaveConcept"
           @delete="onDeleteConcept"
           @close="store.clearSelection"
+          @confirm="onConfirmConcept(store.selectedNode.id)"
+          @reject="onRejectConcept(store.selectedNode.id)"
         />
         <RelationEditor
           v-else-if="store.selectedLink"
@@ -130,6 +132,8 @@
           @save="onSaveRelation"
           @delete="onDeleteRelation"
           @close="store.clearSelection"
+          @confirm="onConfirmRelation(store.selectedLink.relId)"
+          @reject="onRejectRelation(store.selectedLink.relId)"
         />
         <ConceptEditor
           v-else-if="addingConcept"
@@ -169,7 +173,7 @@ import ConceptList from '@/components/ConceptList.vue'
 import TreeView from '@/components/TreeView.vue'
 import MatrixView from '@/components/MatrixView.vue'
 import WeaveExtraction from '@/components/motion/WeaveExtraction.vue'
-import { exportJSON as apiExportJSON, exportMarkdown as apiExportMD } from '@/api'
+import { exportJSON as apiExportJSON, exportMarkdown as apiExportMD, updateConcept, updateRelation } from '@/api'
 import { toPng } from 'html-to-image'
 
 const route = useRoute()
@@ -389,6 +393,36 @@ async function onAddRelation(data) {
   } catch (e) {
     ElMessage.error(e.message || '创建失败')
   }
+}
+
+// ── 可信抽取：确认/驳回（直接调 API，不经 undo/redo） ──
+async function onConfirmConcept(slug) {
+  try {
+    await updateConcept(paperId, slug, { status: 'confirmed' })
+    ElMessage.success('已确认该概念')
+    await reload()
+  } catch (e) { ElMessage.error(e.message || '确认失败') }
+}
+async function onRejectConcept(slug) {
+  try {
+    await updateConcept(paperId, slug, { status: 'rejected' })
+    ElMessage.success('已驳回')
+    await reload()
+  } catch (e) { ElMessage.error(e.message || '操作失败') }
+}
+async function onConfirmRelation(relId) {
+  try {
+    await updateRelation(paperId, relId, { status: 'confirmed' })
+    ElMessage.success('已确认该关系')
+    await reload()
+  } catch (e) { ElMessage.error(e.message || '确认失败') }
+}
+async function onRejectRelation(relId) {
+  try {
+    await updateRelation(paperId, relId, { status: 'rejected' })
+    ElMessage.success('已驳回')
+    await reload()
+  } catch (e) { ElMessage.error(e.message || '操作失败') }
 }
 
 // ── 撤销/重做 ──
