@@ -614,4 +614,32 @@ async function exportMarkdown() {
   opacity: 0;
   transform: translateY(-4px);
 }
+
+/* ── 窄屏适配：侧栏覆盖式 + 顶部控件防重叠 ── */
+@media (max-width: 900px) {
+  .workbench { --right-panel-width: 280px; }
+  .graph-search { width: 280px; }
+}
+
+@media (max-width: 768px) {
+  /* 侧栏转覆盖式：不挤压图谱空间（折叠/展开共用 absolute 定位） */
+  .wb-sidebar {
+    position: absolute;
+    top: 0; right: 0; bottom: 0;
+    box-shadow: var(--shadow-elevated);
+  }
+  .wb-sidebar-toggle { right: var(--space-md); }
+  .workbench.sidebar-collapsed .wb-sidebar-toggle { transform: none; }
+
+  /* 顶部控件防重叠：搜索框收窄居中，工具栏右移，状态条下沉 */
+  .graph-search { width: min(280px, calc(100vw - 48px)); }
+  .graph-toolbar { top: calc(var(--space-md) + 48px); }
+  .verify-strip { top: calc(var(--space-md) + 96px); }
+}
+
+@media (max-width: 480px) {
+  .graph-search { width: calc(100vw - 32px); max-width: none; }
+  .graph-toolbar { right: var(--space-sm); gap: 0; padding: 4px; }
+  .tb-btn { width: 28px; height: 28px; }
+}
 </style>

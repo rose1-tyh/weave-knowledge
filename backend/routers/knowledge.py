@@ -418,7 +418,7 @@ async def search_concepts(q: str = ""):
             return R.success(data={"results": []})
         fts_q = f'"{clean}"'
         rows = await db.execute_fetchall(
-            """SELECT c.slug, c.name, c.type, c.paper_id, p.title AS paper_title
+            """SELECT c.slug, c.name, c.type, c.definition, c.paper_id, p.title AS paper_title
                FROM concepts_fts f
                JOIN concepts c ON c.id = f.rowid
                JOIN papers p ON c.paper_id = p.id
@@ -428,7 +428,7 @@ async def search_concepts(q: str = ""):
         )
     else:
         rows = await db.execute_fetchall(
-            """SELECT c.slug, c.name, c.type, c.paper_id, p.title AS paper_title
+            """SELECT c.slug, c.name, c.type, c.definition, c.paper_id, p.title AS paper_title
                FROM concepts c JOIN papers p ON c.paper_id = p.id
                WHERE c.name LIKE ? OR c.definition LIKE ?
                LIMIT 30""",
@@ -438,6 +438,7 @@ async def search_concepts(q: str = ""):
         "id": r["slug"],
         "name": r["name"],
         "type": r["type"],
+        "definition": r["definition"] or "",
         "color": type_colors.get(r["type"], "#6b7280"),
         "paperTitle": r["paper_title"],
         "paperId": r["paper_id"],

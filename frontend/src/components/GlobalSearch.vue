@@ -8,6 +8,7 @@
         <span class="gs-dot" :style="{ background: r.color || 'var(--text-muted)' }"></span>
         <div class="gs-info">
           <span class="gs-name">{{ r.name }}</span>
+          <span v-if="r.definition" class="gs-def">{{ r.definition }}</span>
           <span class="gs-paper">{{ r.paperTitle }}</span>
         </div>
       </div>
@@ -70,7 +71,14 @@ defineExpose({ focus, clear: () => { query.value = ''; searched.value = false } 
 }
 .gs-item:hover .gs-name { color: var(--cyan); }
 .gs-dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+.gs-info { flex: 1; min-width: 0; }
 .gs-name { font-size: var(--text-sm); color: var(--text-primary); display: block; }
-.gs-paper { font-size: var(--text-xs); color: var(--text-muted); }
+.gs-def {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical;
+  overflow: hidden;
+  font-size: var(--text-xs); color: var(--text-secondary); line-height: 1.6;
+  margin-top: 2px;
+}
+.gs-paper { font-size: var(--text-xs); color: var(--text-muted); display: block; margin-top: 2px; }
 .gs-empty { text-align: center; padding: var(--space-lg); color: var(--text-muted); font-size: var(--text-sm); }
 </style>
