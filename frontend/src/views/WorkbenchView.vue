@@ -272,14 +272,12 @@ function selectResult(node) {
 onMounted(async () => {
   try {
     await store.loadGraph(paperId)
-    // if not extracted yet, run extraction
+    // 未提取：提交后台任务并轮询（上传/文本/URL 入口统一走此路径）
     if (!store.graphData || !store.graphData.nodes?.length) {
       showingWeave.value = true          // 显示织网动画
       try {
-        await store.runExtraction(paperId)   // 同步等待真实结果
-        await reload()                        // 提取响应无 relId，重载获取 DB id（关系确认/编辑依赖）
-        // 成功：让织网动画收尾，再淡出露出真实图谱
-        await delay(600)
+        await store.ensureExtracted(paperId)   // 提交（幂等）→ 轮询 → 完成后 loadGraph
+        await delay(600)                       // 成功：让织网动画收尾，再淡出露出真实图谱
       } finally {
         showingWeave.value = false
       }

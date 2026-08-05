@@ -39,6 +39,7 @@ export function updatePaper(paperId, data) { return api.patch(`/library/papers/$
 
 // ── 图谱数据 ──
 export function extractKnowledge(paperId) { return api.post('/extract', { paper_id: paperId }) }
+export function getExtractStatus(paperId) { return api.get(`/extract-status/${paperId}`) }
 export function getGraphData(paperId) { return api.get(`/graph/${paperId}`) }
 
 // ── 知识编辑（概念） ──

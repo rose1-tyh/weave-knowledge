@@ -7,77 +7,52 @@ from models.schemas import (
     RelationCreate, RelationUpdate, FusionRequest, MergeSuggestRequest,
     TextExtractRequest, UrlExtractRequest, EvidenceContextRequest,
 )
-from services.ai_service import AIService
-from services.graph_service import GraphService
 from services.library_service import LibraryService
 from services.parser_registry import get_parser_for_paper
 from services.confidence_service import backfill_paper_confidences
 from services.evidence_service import evidence_context_for_paper
+from services.extraction_service import extraction_manager
+import os
 import uuid
 import requests
 from bs4 import BeautifulSoup
 
 router = APIRouter(prefix="/api", tags=["knowledge"])
-ai_service = AIService()
 
 
-def _relations_with_slugs(graph) -> list[dict]:
-    """把 AI 提取的关系中的概念名重映射为 slug，保证与手动关系存储一致"""
-    name_to_slug = {c.name: c.id for c in graph.concepts}
-    result = []
-    for r in graph.relations:
-        rd = r.model_dump()
-        rd["source"] = name_to_slug.get(rd["source"], rd["source"])
-        rd["target"] = name_to_slug.get(rd["target"], rd["target"])
-        result.append(rd)
-    return result
-
-
-# ── AI 提取 ──
+# ── AI 提取（后台异步任务，前端轮询 /extract-status） ──
 
 @router.post("/extract")
 async def extract_knowledge(req: ExtractRequest):
-    """对已上传的论文（PDF / DOCX）执行 AI 知识提取，结果写入 DB"""
+    """对已上传的论文（PDF / DOCX）执行 AI 知识提取。
+
+    提交后台任务后立即返回；进度经 GET /extract-status/{paper_id} 查询。
+    文本/URL 创建的论文（无 parser）若已有正文，同样可提交。
+    """
+    paper = await LibraryService.get_paper(req.paper_id)
+    if paper is None:
+        raise HTTPException(404, detail="论文不存在")
     parser = get_parser_for_paper(req.paper_id)
-    if parser is None:
+    if parser is not None and not os.path.exists(parser.get_path(req.paper_id)):
         raise HTTPException(404, detail="论文不存在")
-    try:
-        paper = parser.extract(req.paper_id)
-    except FileNotFoundError:
-        raise HTTPException(404, detail="论文不存在")
+    # 已完成且非空 → 幂等返回，不重复提取
+    if paper["extract_status"] == "done" and paper["concept_count"] > 0:
+        return R.success(data={"paperId": req.paper_id, "status": "done"})
+    extraction_manager.submit(req.paper_id)
+    return R.success(data={"paperId": req.paper_id, "status": "processing"})
 
-    await LibraryService.update_paper_text(req.paper_id, paper["full_text"])
-    await LibraryService.update_extract_status(req.paper_id, "processing")
 
-    try:
-        raw = ai_service.extract_knowledge(paper["full_text"], paper["title"])
-        graph = GraphService.build_graph(raw, paper["title"])
-
-        if not graph.concepts:
-            await LibraryService.update_extract_status(req.paper_id, "failed")
-            return R.error("未能提取到概念")
-
-        # 存库
-        concepts_data = [c.model_dump() for c in graph.concepts]
-        relations_data = _relations_with_slugs(graph)
-        await LibraryService.save_concepts(req.paper_id, concepts_data)
-        await LibraryService.save_relations(req.paper_id, relations_data)
-        await LibraryService.update_extract_status(
-            req.paper_id, "done", len(concepts_data), len(relations_data)
-        )
-
-        d3_data = GraphService.to_d3_format(graph)
-        return R.success(data=d3_data)
-    except Exception as e:
-        await LibraryService.update_extract_status(req.paper_id, "failed")
-        raise HTTPException(500, detail=f"AI 提取失败: {str(e)}")
+@router.get("/extract-status/{paper_id}")
+async def extract_status(paper_id: str):
+    """查询论文提取任务状态：pending / processing / done / failed / not_found"""
+    return R.success(data=await extraction_manager.status(paper_id))
 
 
 # ── 文本/URL 提取 ──
 
 @router.post("/extract-text")
 async def extract_from_text(req: TextExtractRequest):
-    """从粘贴的文本中提取知识"""
+    """从粘贴的文本中提取知识（后台任务，立即返回 paperId）"""
     if not req.text.strip():
         raise HTTPException(400, detail="文本内容为空")
 
@@ -90,27 +65,8 @@ async def extract_from_text(req: TextExtractRequest):
         text_length=len(req.text),
     )
     await LibraryService.update_paper_text(paper_id, req.text)
-    await LibraryService.update_extract_status(paper_id, "processing")
-
-    try:
-        raw = ai_service.extract_knowledge(req.text, req.title or "文本知识")
-        graph = GraphService.build_graph(raw, req.title or "文本知识")
-        if not graph.concepts:
-            await LibraryService.update_extract_status(paper_id, "failed")
-            return R.error("未能提取到概念")
-
-        concepts_data = [c.model_dump() for c in graph.concepts]
-        relations_data = _relations_with_slugs(graph)
-        await LibraryService.save_concepts(paper_id, concepts_data)
-        await LibraryService.save_relations(paper_id, relations_data)
-        await LibraryService.update_extract_status(paper_id, "done", len(concepts_data), len(relations_data))
-
-        d3_data = GraphService.to_d3_format(graph)
-        d3_data["paperId"] = paper_id
-        return R.success(data=d3_data)
-    except Exception as e:
-        await LibraryService.update_extract_status(paper_id, "failed")
-        raise HTTPException(500, detail=f"AI 提取失败: {str(e)}")
+    extraction_manager.submit(paper_id)
+    return R.success(data={"paperId": paper_id, "status": "processing"})
 
 
 @router.post("/extract-url")
@@ -144,27 +100,8 @@ async def extract_from_url(req: UrlExtractRequest):
         page_count=1, text_length=len(text),
     )
     await LibraryService.update_paper_text(paper_id, text)
-    await LibraryService.update_extract_status(paper_id, "processing")
-
-    try:
-        raw = ai_service.extract_knowledge(text, title)
-        graph = GraphService.build_graph(raw, title)
-        if not graph.concepts:
-            await LibraryService.update_extract_status(paper_id, "failed")
-            return R.error("未能提取到概念")
-
-        concepts_data = [c.model_dump() for c in graph.concepts]
-        relations_data = _relations_with_slugs(graph)
-        await LibraryService.save_concepts(paper_id, concepts_data)
-        await LibraryService.save_relations(paper_id, relations_data)
-        await LibraryService.update_extract_status(paper_id, "done", len(concepts_data), len(relations_data))
-
-        d3_data = GraphService.to_d3_format(graph)
-        d3_data["paperId"] = paper_id
-        return R.success(data=d3_data)
-    except Exception as e:
-        await LibraryService.update_extract_status(paper_id, "failed")
-        raise HTTPException(500, detail=f"AI 提取失败: {str(e)}")
+    extraction_manager.submit(paper_id)
+    return R.success(data={"paperId": paper_id, "status": "processing"})
 
 
 @router.post("/papers/create-empty")
