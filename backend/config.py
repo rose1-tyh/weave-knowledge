@@ -21,8 +21,13 @@ AI_EMBEDDING_BASE_URL = os.getenv("AI_EMBEDDING_BASE_URL", "")
 AI_EMBEDDING_API_KEY = os.getenv("AI_EMBEDDING_API_KEY", "")
 AI_EMBEDDING_MODEL = os.getenv("AI_EMBEDDING_MODEL", "text-embedding-3-small")
 
+# 数据目录：WEAVE_DATA_DIR 环境变量优先（打包启动器设为 %APPDATA%\织识）；
+# 未设置时保持项目内 backend/storage（开发模式与存量数据不受影响）
+WEAVE_DATA_DIR = os.getenv("WEAVE_DATA_DIR", "").strip()
+_data_root = WEAVE_DATA_DIR if WEAVE_DATA_DIR else os.path.join(os.path.dirname(__file__), "storage")
+
 # 论文存储
-PAPER_STORAGE_DIR = os.path.join(os.path.dirname(__file__), "storage", "papers")
+PAPER_STORAGE_DIR = os.path.join(_data_root, "papers")
 MAX_FILE_SIZE = 50 * 1024 * 1024
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 
@@ -30,4 +35,4 @@ ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 MAX_CHUNK_CHARS = 80000
 
 # 数据库
-DATABASE_PATH = os.path.join(os.path.dirname(__file__), "storage", "weave.db")
+DATABASE_PATH = os.path.join(_data_root, "weave.db")
