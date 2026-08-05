@@ -11,3 +11,4 @@ requests==2.32.3
 beautifulsoup4==4.12.3
 pytest==8.3.3
 pytest-asyncio==0.24.0
+httpx==0.28.1  # 测试依赖（starlette TestClient）
