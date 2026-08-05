@@ -15,6 +15,12 @@ AI_MODEL = os.getenv(
 # OpenAI 兼容接口 base url（DeepSeek / vLLM / OneAPI 等）
 AI_BASE_URL = os.getenv("AI_BASE_URL", "https://api.deepseek.com")
 
+# 可插拔 embedding（概念语义对齐精排；DeepSeek/Anthropic 无 embedding API，
+# 留空则回退纯字符相似度。可配硅基流动等 OpenAI 兼容 /embeddings 提供方）
+AI_EMBEDDING_BASE_URL = os.getenv("AI_EMBEDDING_BASE_URL", "")
+AI_EMBEDDING_API_KEY = os.getenv("AI_EMBEDDING_API_KEY", "")
+AI_EMBEDDING_MODEL = os.getenv("AI_EMBEDDING_MODEL", "text-embedding-3-small")
+
 # 论文存储
 PAPER_STORAGE_DIR = os.path.join(os.path.dirname(__file__), "storage", "papers")
 MAX_FILE_SIZE = 50 * 1024 * 1024

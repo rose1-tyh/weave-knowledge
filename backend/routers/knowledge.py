@@ -328,16 +328,15 @@ async def fusion_graph(req: FusionRequest):
 
 @router.post("/explore/merge-suggestions")
 async def merge_suggestions(req: MergeSuggestRequest):
-    """跨论文概念合并建议：找出在多篇论文中同名的概念"""
+    """跨论文概念合并建议：精确同名 + 字符相似度（可选 embedding 精排）"""
     if len(req.paper_ids) < 2:
         raise HTTPException(400, detail="至少选择 2 篇论文")
 
-    import re
     from database import get_db
-
-    def normalize(name: str) -> str:
-        """规范化名称用于跨论文比对（去空白/连字符/引号，忽略大小写）"""
-        return re.sub(r"[\s　\-_·.'\"()（）]+", "", name.lower())
+    from services.similarity_service import (
+        normalize, char_bigram_jaccard, concept_similarity, SIMILARITY_THRESHOLD,
+    )
+    from services.embedding_service import embedding_service
 
     db = await get_db()
 
@@ -353,22 +352,38 @@ async def merge_suggestions(req: MergeSuggestRequest):
     suggestions = []
     now = datetime.now().isoformat()
 
-    # 两两论文比对同名概念
+    # 两两论文比对：先精确同名（O(1) 查表），未命中再做相似度扫描
     for i in range(len(papers)):
         for j in range(i + 1, len(papers)):
             pa, pb = papers[i], papers[j]
             norm_map_b = {normalize(c["name"]): c for c in pb["concepts"]}
             for ca in pa["concepts"]:
-                key = normalize(ca["name"])
-                cb = norm_map_b.get(key)
-                if not cb:
+                cb = norm_map_b.get(normalize(ca["name"]))
+                matched_by = None
+                if cb is not None:
+                    # 原文完全一致 → exact；仅规范化后一致（如「知识图谱」vs「知识 图谱」）→ similar
+                    matched_by = "exact" if ca["name"] == cb["name"] else "similar"
+                else:
+                    # 相似度扫描：bigram 取最优候选，边缘可 embedding 精排（未配置则纯 bigram）
+                    best, best_sim = None, 0.0
+                    for cand in pb["concepts"]:
+                        s = char_bigram_jaccard(ca["name"], cand["name"])
+                        if s > best_sim:
+                            best, best_sim = cand, s
+                    if best is not None:
+                        emb = embedding_service.similarity(ca["name"], best["name"])
+                        sim = concept_similarity(ca["name"], best["name"], emb)
+                        if sim >= SIMILARITY_THRESHOLD:
+                            cb, matched_by = best, "similar"
+                if not cb or matched_by is None:
                     continue
-                confidence = 0.95 if ca["name"] == cb["name"] else 0.7
+                confidence = 0.95 if matched_by == "exact" else 0.7
                 suggestions.append({
                     "conceptName": ca["name"],
                     "paperIdA": pa["paper"]["id"], "paperTitleA": pa["paper"]["title"], "slugA": ca["slug"],
                     "paperIdB": pb["paper"]["id"], "paperTitleB": pb["paper"]["title"], "slugB": cb["slug"],
                     "confidence": confidence,
+                    "matchedBy": matched_by,
                 })
                 await db.execute(
                     "INSERT OR REPLACE INTO concept_merges "
