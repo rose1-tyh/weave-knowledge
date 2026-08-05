@@ -6,6 +6,12 @@ from database import get_db
 
 class LibraryService:
 
+    # 列表/详情查询列：显式列出（排除 text 大字段，正文按需单独取）
+    PAPER_COLUMNS = (
+        "id, title, filename, page_count, text_length, upload_time, extract_status, "
+        "extract_time, concept_count, relation_count, tags, notes"
+    )
+
     @staticmethod
     async def list_papers(search: str = "", sort: str = "upload_time", page: int = 1, size: int = 50) -> dict:
         db = await get_db()
@@ -18,7 +24,7 @@ class LibraryService:
         offset = (page - 1) * size
 
         rows = await db.execute_fetchall(
-            f"SELECT * FROM papers {where} {order} LIMIT ? OFFSET ?",
+            f"SELECT {LibraryService.PAPER_COLUMNS} FROM papers {where} {order} LIMIT ? OFFSET ?",
             params + [size, offset]
         )
         papers = [dict(r) for r in rows]
@@ -32,7 +38,8 @@ class LibraryService:
     @staticmethod
     async def get_paper(paper_id: str) -> dict | None:
         db = await get_db()
-        row = await db.execute_fetchall("SELECT * FROM papers WHERE id = ?", [paper_id])
+        row = await db.execute_fetchall(
+            f"SELECT {LibraryService.PAPER_COLUMNS} FROM papers WHERE id = ?", [paper_id])
         if not row:
             return None
         paper = dict(row[0])

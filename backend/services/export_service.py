@@ -9,7 +9,8 @@ class ExportService:
     async def export_json(paper_id: str) -> dict:
         """导出完整知识图谱为结构化 JSON"""
         db = await get_db()
-        paper = await db.execute_fetchall("SELECT * FROM papers WHERE id = ?", [paper_id])
+        paper = await db.execute_fetchall(
+            "SELECT id, title, page_count, upload_time FROM papers WHERE id = ?", [paper_id])
         if not paper:
             return None
         p = dict(paper[0])

@@ -62,3 +62,27 @@ async def test_get_graph_data_includes_new_fields(db):
     assert node["confidence_ai"] == 0.9
     assert node["status"] == "confirmed"
     assert node["evidence"] == "证据"
+
+
+async def test_list_papers_excludes_text(db):
+    """列表接口不返回 text 大字段"""
+    await _seed_paper(db, with_text="全文内容" * 1000)
+    result = await LibraryService.list_papers()
+    assert result["total"] == 1
+    paper = result["papers"][0]
+    assert "text" not in paper
+    assert paper["id"] == "p1"
+    assert paper["title"] == "t"
+
+
+async def test_get_paper_excludes_text_keeps_counts(db):
+    """详情接口不返回 text，但保留概念/关系计数"""
+    await _seed_paper(db, with_text="全文内容")
+    await LibraryService.save_concepts("p1", [{
+        "id": "abc", "name": "图谱", "definition": "d", "type": "finding", "page": 1,
+    }])
+    paper = await LibraryService.get_paper("p1")
+    assert paper is not None
+    assert "text" not in paper
+    assert paper["concept_count"] == 1
+    assert paper["relation_count"] == 0
