@@ -13,6 +13,7 @@ from services.confidence_service import backfill_paper_confidences
 from services.evidence_service import evidence_context_for_paper
 from services.extraction_service import extraction_manager
 import os
+import re
 import uuid
 import requests
 from bs4 import BeautifulSoup
@@ -382,19 +383,42 @@ async def merge_suggestions(req: MergeSuggestRequest):
 
 @router.get("/explore/search")
 async def search_concepts(q: str = ""):
-    """全局概念搜索"""
+    """全局概念搜索。
+
+    ≥3 字符走 FTS5 trigram（中文子串匹配）；<3 字符回退 LIKE（trigram 限制）。
+    查询串整体作为短语匹配并转义引号，避免 MATCH 语法注入。
+    """
     if not q:
         return R.success(data={"results": []})
     from database import get_db
     db = await get_db()
-    rows = await db.execute_fetchall(
-        """SELECT c.*, p.title as paper_title FROM concepts c
-           JOIN papers p ON c.paper_id = p.id
-           WHERE c.name LIKE ? OR c.definition LIKE ?
-           LIMIT 30""",
-        [f"%{q}%", f"%{q}%"]
-    )
+
     type_colors = {"method": "#e8453c", "theory": "#8b5cf6", "dataset": "#10b981", "finding": "#f59e0b", "tool": "#00d4ff"}
+
+    if len(q) >= 3:
+        # FTS5 短语查询：剥离控制字符（引号/星号/括号/冒号/空白），整体包裹为短语，
+        # 避免 MATCH 语法注入；trigram 下短语即连续子串匹配
+        clean = re.sub(r'["*():\s]+', '', q)
+        if not clean:
+            return R.success(data={"results": []})
+        fts_q = f'"{clean}"'
+        rows = await db.execute_fetchall(
+            """SELECT c.slug, c.name, c.type, c.paper_id, p.title AS paper_title
+               FROM concepts_fts f
+               JOIN concepts c ON c.id = f.rowid
+               JOIN papers p ON c.paper_id = p.id
+               WHERE concepts_fts MATCH ?
+               LIMIT 30""",
+            [fts_q]
+        )
+    else:
+        rows = await db.execute_fetchall(
+            """SELECT c.slug, c.name, c.type, c.paper_id, p.title AS paper_title
+               FROM concepts c JOIN papers p ON c.paper_id = p.id
+               WHERE c.name LIKE ? OR c.definition LIKE ?
+               LIMIT 30""",
+            [f"%{q}%", f"%{q}%"]
+        )
     results = [{
         "id": r["slug"],
         "name": r["name"],

@@ -74,6 +74,29 @@ async def init_db():
             created_at TEXT NOT NULL,
             UNIQUE(concept_name_a, paper_id_a, concept_name_b, paper_id_b)
         );
+
+        -- 概念全文索引（FTS5 trigram：支持中文子串匹配；<3 字符查询回退 LIKE）
+        CREATE VIRTUAL TABLE IF NOT EXISTS concepts_fts USING fts5(
+            name, definition,
+            content='concepts', content_rowid='id',
+            tokenize='trigram'
+        );
+
+        CREATE TRIGGER IF NOT EXISTS concepts_ai AFTER INSERT ON concepts BEGIN
+            INSERT INTO concepts_fts(rowid, name, definition) VALUES (new.id, new.name, new.definition);
+        END;
+        CREATE TRIGGER IF NOT EXISTS concepts_ad AFTER DELETE ON concepts BEGIN
+            INSERT INTO concepts_fts(concepts_fts, rowid, name, definition)
+            VALUES ('delete', old.id, old.name, old.definition);
+        END;
+        CREATE TRIGGER IF NOT EXISTS concepts_au AFTER UPDATE ON concepts BEGIN
+            INSERT INTO concepts_fts(concepts_fts, rowid, name, definition)
+            VALUES ('delete', old.id, old.name, old.definition);
+            INSERT INTO concepts_fts(rowid, name, definition) VALUES (new.id, new.name, new.definition);
+        END;
+
+        -- 启动时重建全文索引（幂等；覆盖存量数据与旧库升级路径）
+        INSERT INTO concepts_fts(concepts_fts) VALUES('rebuild');
     """)
     await migrate_schema(db)
     await db.commit()
