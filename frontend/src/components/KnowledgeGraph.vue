@@ -70,10 +70,15 @@ let hoveredLink = null
 let boxSelect = null        // 框选起点（svg 屏幕坐标）
 let boxRect = null          // 框选矩形 d3 selection
 let dragGroupStart = null   // 多选批量移动的起始位置快照
+let linkG = null            // 边容器 g
+let nodeG = null            // 节点容器 g
+let linkLines = null        // 边 join selection
+let nodeGroups = null       // 节点 join selection
+let sceneBuilt = false      // 场景骨架是否已建（首次全量，之后增量）
 
 onMounted(() => {
   render()
-  resizeObserver = new ResizeObserver(() => render())
+  resizeObserver = new ResizeObserver(onResize)
   resizeObserver.observe(container.value)
 })
 onUnmounted(() => {
@@ -82,11 +87,13 @@ onUnmounted(() => {
   cancelBoxSelect() // 卸载时清理可能残留的 window mousemove/mouseup 监听
 })
 
-watch(() => props.data, () => { render(); applyFilter() })
+watch(() => props.data, () => { render() })
 watch(() => props.selectedId, (id) => { highlightNode(id); refreshSelectionVisual() })
 // 编辑模式切换时更新 zoom filter（排除背景 mousedown 以便框选，而非平移）
 watch(() => props.editing, () => {
   if (zoomBehavior) zoomBehavior.filter(shouldZoom)
+  // 编辑模式光标形态跟随
+  if (nodeGroups) nodeGroups.attr('cursor', props.editing ? 'crosshair' : 'pointer')
 })
 // 过滤状态存 graph store（规格 F1）：Workbench/Explore 共享、跨视图切换保持；变化即重算视觉
 watch(() => graphStore.filterType, () => applyFilter())
@@ -102,18 +109,23 @@ function shouldZoom(event) {
     && !event.button
 }
 
+// ── 渲染入口：首次全量建场景骨架；此后数据变化走增量 join（不复建 DOM/力模拟）──
 function render() {
   if (!container.value || !props.data) return
-  // 重建前先停止旧力模拟，避免 d3-timer 持有旧引用持续 tick（侧栏折叠/转场会提高 render 频率）
-  if (simulation) simulation.stop()
   // 重建前若框选仍在进行则取消（resize/数据刷新可能触发 render）
   cancelBoxSelect()
+  const { nodes } = props.data
+  if (!nodes.length) return
+  if (!sceneBuilt) buildScene()
+  else updateData()
+}
 
+// 场景骨架（仅首次）：svg 清空 → 背景/滤镜 → zoom → 事件 → 力模拟 → 首轮 join
+function buildScene() {
   const el = container.value
   const W = el.clientWidth
   const H = el.clientHeight
   const { nodes, links } = props.data
-  if (!nodes.length) return
   hoveredLink = null
 
   const svg = d3.select(svgEl.value)
@@ -133,6 +145,8 @@ function render() {
     .html('<feGaussianBlur stdDeviation="3" result="blur"/><feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>')
 
   const g = svg.append('g')
+  linkG = g.append('g')
+  nodeG = g.append('g')
   zoomBehavior = d3.zoom()
     .scaleExtent([0.15, 5])
     // 组合 d3-zoom 默认过滤（!event.button 拦右键/中键拖拽、!event.ctrlKey 排除 Ctrl+手势），
@@ -153,6 +167,7 @@ function render() {
 
   // 编辑模式：svg 空白 mousedown → 框选（节点自身的 drag 会 stopImmediatePropagation，不会触发到这里）
   svg.on('mousedown', onSvgMouseDown)
+  svg.on('click', () => { if (!props.editing) emit('select-node', null) })
 
   // 力模拟
   simulation = d3.forceSimulation(nodes)
@@ -161,15 +176,61 @@ function render() {
     .force('center', d3.forceCenter(0, 0))
     .force('collision', d3.forceCollide(50))
 
-  // 边
-  const linkG = g.append('g')
-  const linkLines = linkG.selectAll('line').data(links).join('line')
-    .attr('class', d => nodeStatusVisual(d).dashed ? 'link-dashed' : 'link-solid')
+  simulation.on('tick', onTick)
+
+  bindLinks(links)
+  bindNodes(nodes)
+  sceneBuilt = true
+
+  highlightNode(props.selectedId)
+  refreshSelectionVisual()
+  applyFilter()
+}
+
+// 数据更新：重绑力模拟 + 增量 join（enter/update/exit，复用已有 DOM）
+function updateData() {
+  const { nodes, links } = props.data
+  hoveredLink = null
+  simulation.nodes(nodes)
+  simulation.force('link', d3.forceLink(links).id(d => d.id).distance(140))
+  bindLinks(links)
+  bindNodes(nodes)
+  simulation.alpha(1).restart()
+
+  highlightNode(props.selectedId)
+  refreshSelectionVisual()
+  applyFilter()
+}
+
+// 容器尺寸变化：只更新 svg 尺寸，不重建场景
+function onResize() {
+  if (!container.value || !svgEl.value) return
+  const W = container.value.clientWidth
+  const H = container.value.clientHeight
+  d3.select(svgEl.value).attr('width', W).attr('height', H)
+}
+
+function onTick() {
+  if (!linkLines || !nodeGroups) return
+  linkLines
+    .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
+    .attr('x2', d => d.target.x).attr('y2', d => d.target.y)
+    .attr('stroke-width', d => {
+      const base = d.type === 'contradicts' ? 2 : 1.2
+      return hoveredLink === d ? base + 1.5 : base
+    })
+    .attr('stroke-opacity', d => hoveredLink === d ? 0.9 : 0.6)
+  nodeGroups.attr('transform', d => `translate(${d.x},${d.y})`)
+}
+
+// ── 边 join：key 优先 relId（DB 稳定 id），无 relId（AI 即时数据）退 index ──
+function bindLinks(links) {
+  const tip = tooltip.value
+  linkLines = linkG.selectAll('line[data-role="link"]')
+    .data(links, (d, i) => (d.relId != null ? d.relId : i))
+  linkLines.exit().remove()
+  const enter = linkLines.enter().append('line')
     .attr('data-role', 'link')
-    .attr('stroke', d => d.color || 'rgba(255,255,255,0.2)')
-    .attr('stroke-opacity', 0.6)
-    .attr('stroke-width', d => d.type === 'contradicts' ? 2 : 1.2)
-    .attr('opacity', d => nodeStatusVisual(d).opacity)
     .style('cursor', 'pointer')
     .on('click', (e, d) => {
       e.stopPropagation()
@@ -194,12 +255,22 @@ function render() {
         .attr('stroke-opacity', 0.6)
       tip.classList.remove('visible')
     })
+  linkLines = enter.merge(linkLines)
+  linkLines
+    .attr('class', d => nodeStatusVisual(d).dashed ? 'link-dashed' : 'link-solid')
+    .attr('stroke', d => d.color || 'rgba(255,255,255,0.2)')
+    .attr('stroke-opacity', 0.6)
+    .attr('stroke-width', d => d.type === 'contradicts' ? 2 : 1.2)
+    .attr('opacity', d => nodeStatusVisual(d).opacity)
+}
 
-  // 节点组
-  const nodeG = g.append('g')
-  const nodeGroups = nodeG.selectAll('g').data(nodes).join('g')
+// ── 节点 join：key = 节点 id（slug），增量更新属性；事件/拖拽仅在 enter 绑定一次 ──
+function bindNodes(nodes) {
+  const tip = tooltip.value
+  nodeGroups = nodeG.selectAll('g[data-role="node"]').data(nodes, d => d.id)
+  nodeGroups.exit().remove()
+  const enter = nodeGroups.enter().append('g')
     .attr('data-role', 'node')
-    .attr('cursor', props.editing ? 'crosshair' : 'pointer')
     .call(d3.drag()
       .on('start', (e, d) => {
         if (props.editing) { dragSourceNode = d; return }
@@ -230,7 +301,7 @@ function render() {
       })
       .on('end', (e, d) => {
         // 编辑模式：源节点拖拽到另一节点上方松手 → 创建关系（命中测试；可能未命中，属正常）。
-        // 注意 d3-drag 的 end 事件始终携带“手势起点”节点 datum（即源节点），
+        // 注意 d3-drag 的 end 事件始终携带"手势起点"节点 datum（即源节点），
         // 因此目标节点需用指针命中测试（elementsFromPoint）定位，而非事件自身 datum。
         if (props.editing && dragSourceNode) {
           const target = nodeAtPoint(e.sourceEvent?.clientX, e.sourceEvent?.clientY, d)
@@ -250,15 +321,50 @@ function render() {
         d.fx = null; d.fy = null
       })
     )
+    .on('click', (e, d) => {
+      if (props.editing) return
+      e.stopPropagation()
+      emit('select-node', d.id)
+    })
+    .on('dblclick', (e, d) => {
+      if (props.editing) emit('edit-node', d.id)
+    })
+    .on('mouseenter', (e, d) => {
+      if (props.editing) {
+        tip.textContent = `${d.name} — 拖拽至另一节点创建关系`
+      } else {
+        tip.textContent = `${d.name}\n${d.definition || ''}`
+      }
+      tip.classList.add('visible')
+    })
+    .on('mousemove', e => {
+      tip.style.left = (e.offsetX + 14) + 'px'
+      tip.style.top = (e.offsetY - 10) + 'px'
+    })
+    .on('mouseleave', () => tip.classList.remove('visible'))
+    .on('contextmenu', (e, d) => {
+      e.preventDefault()
+      if (props.editing) {
+        emit('select-node', d.id)
+      }
+    })
+  // 子元素：光晕 / 主体 / 选中环 / 文字（append 顺序即 nth-child 顺序）
+  enter.append('circle')
+  enter.append('circle')
+  enter.append('circle')
+  enter.append('text')
+
+  nodeGroups = enter.merge(nodeGroups)
+  nodeGroups.attr('cursor', props.editing ? 'crosshair' : 'pointer')
 
   // 外圈光晕
-  nodeGroups.append('circle')
+  nodeGroups.select('circle:nth-child(1)')
     .attr('r', 30)
     .attr('fill', d => d.color)
     .attr('opacity', 0.08)
 
   // 节点主体（描边支持融合来源着色：paperIndex → 论文色；-1 → 混合亮紫）
-  nodeGroups.append('circle')
+  nodeGroups.select('circle:nth-child(2)')
     .attr('r', 18)
     .attr('fill', '#111827')
     .attr('stroke', d => nodeStroke(d))
@@ -268,7 +374,7 @@ function render() {
     .attr('style', d => `filter: drop-shadow(0 0 6px ${d.color})`)
 
   // 选中发光环
-  nodeGroups.append('circle')
+  nodeGroups.select('circle:nth-child(3)')
     .attr('r', 22)
     .attr('fill', 'none')
     .attr('stroke', d => d.color)
@@ -277,7 +383,7 @@ function render() {
     .attr('class', 'selected-ring')
 
   // 文字
-  nodeGroups.append('text')
+  nodeGroups.select('text')
     .text(d => d.name.length > 5 ? d.name.slice(0, 5) + '…' : d.name)
     .attr('text-anchor', 'middle')
     .attr('dy', '0.35em')
@@ -287,69 +393,26 @@ function render() {
     .attr('pointer-events', 'none')
     .attr('style', 'text-shadow: 0 0 4px rgba(0,0,0,0.8)')
 
-  // 已确认节点印章（append 在 text 之后，位于节点组最上层）
-  const sealG = nodeGroups.filter(d => nodeStatusVisual(d).seal).append('g')
-    .attr('class', 'node-seal')
-    .attr('pointer-events', 'none')
-  sealG.append('rect')
-    .attr('x', -7).attr('y', 20).attr('width', 14).attr('height', 12).attr('rx', 2)
-    .attr('fill', 'none').attr('stroke', '#e8453c').attr('stroke-width', 1.2)
-  sealG.append('text')
-    .attr('x', 0).attr('y', 29.5)
-    .attr('text-anchor', 'middle').attr('font-size', 8).attr('font-weight', 700)
-    .attr('fill', '#e8453c')
-    .text('验')
-
-  // 提示信息
-  const tip = tooltip.value
-  nodeGroups.on('click', (e, d) => {
-    if (props.editing) return
-    e.stopPropagation()
-    emit('select-node', d.id)
-  })
-  nodeGroups.on('dblclick', (e, d) => {
-    if (props.editing) emit('edit-node', d.id)
-  })
-  nodeGroups.on('mouseenter', (e, d) => {
-    if (props.editing) {
-      tip.textContent = `${d.name} — 拖拽至另一节点创建关系`
-    } else {
-      tip.textContent = `${d.name}\n${d.definition || ''}`
-    }
-    tip.classList.add('visible')
-  })
-  nodeGroups.on('mousemove', e => {
-    tip.style.left = (e.offsetX + 14) + 'px'
-    tip.style.top = (e.offsetY - 10) + 'px'
-  })
-  nodeGroups.on('mouseleave', () => tip.classList.remove('visible'))
-
-  // 右键菜单
-  nodeGroups.on('contextmenu', (e, d) => {
-    e.preventDefault()
-    if (props.editing) {
-      emit('select-node', d.id)
-    }
-  })
-
-  svg.on('click', () => { if (!props.editing) emit('select-node', null) })
-
-  // tick
-  simulation.on('tick', () => {
-    linkLines
-      .attr('x1', d => d.source.x).attr('y1', d => d.source.y)
-      .attr('x2', d => d.target.x).attr('y2', d => d.target.y)
-      .attr('stroke-width', d => {
-        const base = d.type === 'contradicts' ? 2 : 1.2
-        return hoveredLink === d ? base + 1.5 : base
-      })
-      .attr('stroke-opacity', d => hoveredLink === d ? 0.9 : 0.6)
-    nodeGroups.attr('transform', d => `translate(${d.x},${d.y})`)
-  })
-
-  highlightNode(props.selectedId)
-  refreshSelectionVisual()
-  applyFilter()
+  // 已确认节点印章：按需 join（状态变化时增删），位于节点组最上层
+  nodeGroups.selectAll('g.node-seal')
+    .data(d => nodeStatusVisual(d).seal ? [d] : [])
+    .join(
+      enter => enter.append('g')
+        .attr('class', 'node-seal')
+        .attr('pointer-events', 'none')
+        .call(g => {
+          g.append('rect')
+            .attr('x', -7).attr('y', 20).attr('width', 14).attr('height', 12).attr('rx', 2)
+            .attr('fill', 'none').attr('stroke', '#e8453c').attr('stroke-width', 1.2)
+          g.append('text')
+            .attr('x', 0).attr('y', 29.5)
+            .attr('text-anchor', 'middle').attr('font-size', 8).attr('font-weight', 700)
+            .attr('fill', '#e8453c')
+            .text('验')
+        }),
+      update => update,
+      exit => exit.remove()
+    )
 }
 
 // ── 图例类型过滤：只改 opacity，不重排布局；过滤状态由 graph store 持有（规格 F1）──
@@ -427,7 +490,7 @@ function refreshSelectionVisual() {
     })
 }
 
-// 编辑模式拖拽建关系的目标命中：返回指针下“非源节点”的节点 datum（无则 null）。
+// 编辑模式拖拽建关系的目标命中：返回指针下"非源节点"的节点 datum（无则 null）。
 // 用 document.elementsFromPoint 取指针下所有元素，遍历找第一个 [data-role=node] 且
 // datum.id !== 源节点 id 的元素——源节点若在上层盖住目标（DOM 更靠后），仍能命中其下目标。
 // 兼容缩放平移后的坐标（基于渲染几何做真实 DOM 命中）。
