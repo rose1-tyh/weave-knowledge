@@ -1,0 +1,13 @@
+.git
+.rivet
+.superpowers
+**/node_modules
+**/dist
+backend/build
+backend/storage
+backend/backend-server.log
+backend/.env
+frontend/dev-server.log
+docs
+*.md
+!README.md

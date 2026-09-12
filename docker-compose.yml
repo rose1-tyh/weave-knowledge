@@ -1,0 +1,22 @@
+services:
+  weave:
+    build: .
+    container_name: weave-knowledge
+    ports:
+      - "8000:8000"
+    volumes:
+      - weave-data:/data
+    environment:
+      # AI 提供方配置（从宿主环境或同目录 .env 注入；不配置时应用可跑，仅 AI 提取不可用）
+      - AI_PROVIDER=${AI_PROVIDER:-}
+      - AI_API_KEY=${AI_API_KEY:-}
+      - AI_MODEL=${AI_MODEL:-}
+      - AI_BASE_URL=${AI_BASE_URL:-}
+      # 可选：语义检索 embedding 提供方
+      - AI_EMBEDDING_BASE_URL=${AI_EMBEDDING_BASE_URL:-}
+      - AI_EMBEDDING_API_KEY=${AI_EMBEDDING_API_KEY:-}
+      - AI_EMBEDDING_MODEL=${AI_EMBEDDING_MODEL:-}
+    restart: unless-stopped
+
+volumes:
+  weave-data:
