@@ -42,3 +42,13 @@ export function markdownPlain(text, maxLength = 120) {
     .trim()
   return plain.length > maxLength ? plain.slice(0, maxLength) + '…' : plain
 }
+
+/** 搜索高亮片段渲染：先转义 HTML，再还原服务端 <mark> 标记（内容安全） */
+export function renderSnippet(snippet) {
+  if (!snippet) return ''
+  const esc = String(snippet)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+  return esc.replace(/&lt;mark&gt;/g, '<mark>').replace(/&lt;\/mark&gt;/g, '</mark>')
+}

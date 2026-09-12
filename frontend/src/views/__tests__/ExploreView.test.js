@@ -38,79 +38,51 @@ vi.mock('@/components/GlobalSearch.vue', () => ({
 
 import ExploreView from '@/views/ExploreView.vue'
 
-function key(type, init) {
-  window.dispatchEvent(new KeyboardEvent(type, init))
-}
-
 const mountExplore = () => mount(ExploreView, {
   global: { stubs: { 'el-button': { template: '<button><slot /></button>' } } },
 })
 
-describe('ExploreView ⌘K 全局搜索面板', () => {
+// ⌘K 命令面板已上移至 App.vue 全局（见 App.test.js），此处保留 Explore 页自身行为
+describe('ExploreView 全局探索页', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('初始面板关闭', async () => {
+  it('初始无融合图谱、无论文选中', async () => {
     const wrapper = mountExplore()
     await wrapper.vm.$nextTick()
-    expect(wrapper.vm.searchOpen).toBe(false)
+    expect(wrapper.vm.fusionData).toBeNull()
+    expect(wrapper.vm.selectedIds).toEqual([])
   })
 
-  it('Ctrl+K 打开，Esc 关闭', async () => {
+  it('侧栏概念搜索：结果进入 searchResults', async () => {
+    const { searchConcepts } = await import('@/api')
+    searchConcepts.mockResolvedValueOnce({ results: [{ id: 'a', name: '概念A' }] })
     const wrapper = mountExplore()
     await wrapper.vm.$nextTick()
 
-    key('keydown', { key: 'k', ctrlKey: true, code: 'KeyK' })
-    await wrapper.vm.$nextTick()
-    expect(wrapper.vm.searchOpen).toBe(true)
-
-    key('keydown', { key: 'Escape', code: 'Escape' })
-    await wrapper.vm.$nextTick()
-    expect(wrapper.vm.searchOpen).toBe(false)
+    await wrapper.vm.doSearch('概念')
+    expect(searchConcepts).toHaveBeenCalledWith('概念')
+    expect(wrapper.vm.searchResults).toHaveLength(1)
   })
 
-  it('Meta+K 再次触发会关闭已打开的面板', async () => {
+  it('生成融合图谱：节点附 paperIndex，选中节点更新 selectedNode', async () => {
+    const { fusionGraph } = await import('@/api')
+    fusionGraph.mockResolvedValueOnce({
+      paperTitle: 'X · Y',
+      nodes: [{ id: 'n1', name: '概念A', paperIds: ['p2'] }],
+      links: [],
+    })
     const wrapper = mountExplore()
     await wrapper.vm.$nextTick()
 
-    key('keydown', { key: 'K', metaKey: true, code: 'KeyK' })
-    await wrapper.vm.$nextTick()
-    expect(wrapper.vm.searchOpen).toBe(true)
+    wrapper.vm.selectedIds = ['p1', 'p2']
+    await wrapper.vm.generateFusion()
+    expect(wrapper.vm.fusionData).not.toBeNull()
+    // 单来源 p2 在所选列表下标 1 → paperIndex=1（computePaperIndex）
+    expect(wrapper.vm.fusionData.nodes[0].paperIndex).toBe(1)
 
-    key('keydown', { key: 'k', metaKey: true, code: 'KeyK' })
-    await wrapper.vm.$nextTick()
-    expect(wrapper.vm.searchOpen).toBe(false)
-  })
-
-  it('点击搜索结果 → 关闭面板并跳转该论文工作台', async () => {
-    const wrapper = mountExplore()
-    await wrapper.vm.$nextTick()
-
-    key('keydown', { key: 'k', ctrlKey: true, code: 'KeyK' })
-    await wrapper.vm.$nextTick()
-    expect(wrapper.vm.searchOpen).toBe(true)
-
-    wrapper.findComponent({ name: 'GlobalSearchStub' })
-      .vm.$emit('select', { id: 'concept-a', paperId: 'paper-42', name: '概念A' })
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.vm.searchOpen).toBe(false)
-    expect(pushMock).toHaveBeenCalledWith({ name: 'Workbench', params: { paperId: 'paper-42' } })
-  })
-
-  it('无 paperId 的搜索结果不跳转', async () => {
-    const wrapper = mountExplore()
-    await wrapper.vm.$nextTick()
-
-    key('keydown', { key: 'k', ctrlKey: true, code: 'KeyK' })
-    await wrapper.vm.$nextTick()
-
-    wrapper.findComponent({ name: 'GlobalSearchStub' })
-      .vm.$emit('select', { id: 'concept-b', name: '概念B' })
-    await wrapper.vm.$nextTick()
-
-    expect(wrapper.vm.searchOpen).toBe(false)
-    expect(pushMock).not.toHaveBeenCalled()
+    await wrapper.vm.onSelectNode('n1')
+    expect(wrapper.vm.selectedNode?.id).toBe('n1')
   })
 })

@@ -31,28 +31,16 @@
       <ConceptEditor v-else :concept="selectedNode" :editing="false" @close="selectedNode = null" />
     </div>
 
-    <!-- ⌘K 全局搜索面板 -->
-    <Teleport to="body">
-      <transition name="cmdk-fade">
-        <div v-if="searchOpen" class="cmdk-overlay" @click.self="searchOpen = false">
-          <div class="cmdk-panel glass-panel" role="dialog" aria-modal="true" aria-label="全局搜索">
-            <div class="cmdk-head">
-              <span class="cmdk-title">全局搜索</span>
-              <span class="cmdk-kbd">⌘K · Esc</span>
-            </div>
-            <GlobalSearch :results="searchResults" @search="doSearch" @select="onSelectResult" autofocus />
-          </div>
-        </div>
-      </transition>
-    </Teleport>
+    <p v-if="loadError" class="explore-load-error">{{ loadError }}</p>
   </div>
 </template>
 
 <script setup>
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
 import { fusionGraph, searchConcepts } from '@/api'
+import { useApiError } from '@/composables/useApiError'
 import { computePaperIndex } from '@/utils/fusion'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
 import ConceptEditor from '@/components/ConceptEditor.vue'
@@ -61,32 +49,23 @@ import ParticleBackground from '@/components/ParticleBackground.vue'
 
 const router = useRouter()
 const lib = useLibraryStore()
+const { showError } = useApiError()
 const papers = ref([])
 const selectedIds = ref([])
 const fusionData = ref(null)
 const loading = ref(false)
 const selectedNode = ref(null)
 const searchResults = ref([])
-const searchOpen = ref(false)
-
-function onKeydown(e) {
-  // ⌘K / Ctrl+K → 切换全局搜索面板
-  if ((e.metaKey || e.ctrlKey) && (e.key === 'k' || e.key === 'K' || e.code === 'KeyK')) {
-    e.preventDefault()
-    searchOpen.value = !searchOpen.value
-  } else if (e.key === 'Escape' && searchOpen.value) {
-    searchOpen.value = false
-  }
-}
+const loadError = ref('')
 
 onMounted(async () => {
-  window.addEventListener('keydown', onKeydown)
-  await lib.fetchPapers()
+  try {
+    await lib.fetchPapers()
+  } catch (e) {
+    loadError.value = e.message || '论文列表加载失败'
+    showError(e)
+  }
   papers.value = lib.papers.filter(p => p.extract_status === 'done')
-})
-
-onUnmounted(() => {
-  window.removeEventListener('keydown', onKeydown)
 })
 
 async function generateFusion() {
@@ -103,7 +82,9 @@ async function generateFusion() {
       }))
     }
     fusionData.value = data
-  } catch (_) {}
+  } catch (e) {
+    showError(e, '融合图谱生成失败')
+  }
   loading.value = false
 }
 
@@ -112,7 +93,9 @@ async function doSearch(q) {
   try {
     const data = await searchConcepts(q)
     searchResults.value = data.results || []
-  } catch (_) {}
+  } catch (e) {
+    showError(e, '搜索失败')
+  }
 }
 
 function onSelectNode(id) {
@@ -170,49 +153,12 @@ function onSelectResult(r) {
 .explore-empty-hint { font-size: var(--text-xs); color: var(--text-disabled); }
 .explore-right { position: relative; z-index: 2; width: 300px; flex-shrink: 0; border-left: 1px solid var(--border-subtle); overflow-y: auto; }
 
-/* ── ⌘K 全局搜索面板（仅 transform/opacity 动效） ── */
-.cmdk-overlay {
-  position: fixed;
-  inset: 0;
-  z-index: 100;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  padding-top: 16vh;
-  background: rgba(8, 12, 20, 0.6);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
-}
-.cmdk-panel {
-  width: 560px;
-  max-width: calc(100vw - 48px);
-  padding: var(--space-lg);
-  box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.08);
-}
-.cmdk-head {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: var(--space-md);
-}
-.cmdk-title { font-family: var(--font-display); font-size: var(--text-md); color: var(--text-primary); }
-.cmdk-kbd {
-  font-family: var(--font-mono);
-  font-size: var(--text-xs);
-  color: var(--page-explore-accent);
-  border: 1px solid var(--border-default);
-  border-radius: var(--radius-sm);
-  padding: 2px 6px;
-}
-.cmdk-panel :deep(.global-search) { padding: 0; }
-
-.cmdk-fade-enter-active,
-.cmdk-fade-leave-active {
-  transition: opacity var(--ease-out-soft), transform var(--ease-out-soft);
-}
-.cmdk-fade-enter-from,
-.cmdk-fade-leave-to {
-  opacity: 0;
-  transform: translateY(-14px) scale(0.98);
+.explore-load-error {
+  position: absolute;
+  z-index: 2;
+  top: var(--space-md);
+  right: var(--space-md);
+  color: var(--vermilion);
+  font-size: var(--text-sm);
 }
 </style>

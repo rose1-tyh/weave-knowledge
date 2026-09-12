@@ -19,8 +19,11 @@
       </router-link>
     </nav>
 
-    <!-- 右侧：主题切换 + 上传按钮 -->
+    <!-- 右侧：搜索 / 主题切换 / 上传 -->
     <div class="header-actions">
+      <button class="btn-cmdk" title="全局搜索（Ctrl+K）" @click="openPalette">
+        <el-icon><Search /></el-icon><span class="kbd-hint">Ctrl K</span>
+      </button>
       <button
         class="btn-theme"
         :title="theme === 'dark' ? '切换到宣纸主题' : '切换到墨夜主题'"
@@ -38,11 +41,15 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { HomeFilled, Collection, Connection, Moon, Sunny, Plus } from '@element-plus/icons-vue'
+import { HomeFilled, Collection, Connection, Search, Moon, Sunny, Plus } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()
 const { theme, toggleTheme } = useTheme()
+
+function openPalette() {
+  window.dispatchEvent(new CustomEvent('weave:open-cmdk'))
+}
 </script>
 
 <style scoped>
@@ -121,6 +128,32 @@ const { theme, toggleTheme } = useTheme()
   display: flex;
   align-items: center;
   gap: var(--space-sm);
+}
+
+/* 全局搜索入口 */
+.btn-cmdk {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 32px;
+  padding: 0 10px;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--space-surface);
+  color: var(--text-secondary);
+  font-size: var(--text-xs);
+  font-family: inherit;
+  cursor: pointer;
+  transition: all var(--ease-out);
+}
+.btn-cmdk:hover { color: var(--cyan); border-color: var(--cyan); }
+.kbd-hint {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 3px;
+  padding: 0 4px;
+  color: var(--text-muted);
 }
 
 /* 主题切换 */
