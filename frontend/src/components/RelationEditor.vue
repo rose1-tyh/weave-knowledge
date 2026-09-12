@@ -1,7 +1,7 @@
 <template>
   <div class="relation-editor" v-if="link">
     <div class="re-header">
-      <span class="re-type-badge" :style="{ background: relColors[link.type] || '#6b7280' }">
+      <span class="re-type-badge" :style="{ background: relMeta(link.type).color }">
         {{ relLabels[link.type] || link.type }}
       </span>
       <button class="re-close" @click="$emit('close')">&times;</button>
@@ -40,6 +40,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue'
 import { isLowConfidence, statusLabel, confPercent } from '@/utils/confidence'
+import { relMeta } from '@/design/tokens'
 
 const props = defineProps({
   link: { type: Object, default: null },
@@ -50,8 +51,6 @@ const props = defineProps({
 defineEmits(['save', 'delete', 'close', 'confirm', 'reject', 'evidence'])
 
 const relLabels = { supports: '支撑', contradicts: '矛盾', extends: '扩展', cites: '引用', uses: '使用' }
-const relColors = { supports: '#10b981', contradicts: '#e8453c', extends: '#f59e0b', cites: '#6b7280', uses: '#00d4ff' }
-
 const sourceName = computed(() => {
   const n = props.nodes?.find(n => n.id === props.link?.source)
   return n?.name || props.link?.source || '?'
@@ -83,7 +82,7 @@ watch(() => props.link, (l) => {
   width: 100%; padding: 8px 10px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-sm);
-  background: rgba(255,255,255,0.04);
+  background: var(--space-surface);
   color: var(--text-primary);
   font-size: var(--text-sm);
   font-family: inherit;

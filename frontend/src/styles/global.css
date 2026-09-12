@@ -1,6 +1,6 @@
 /* ═══════════════════════════════════════════════════
-   织识 v2.0 — 全局样式
-   新中式科技 · 暗色深空 + 玻璃拟态
+   织识 v3.1 — 全局样式
+   双主题：墨夜（默认）/ 宣纸（html.light）
    ═══════════════════════════════════════════════════ */
 
 /* ── 全局重置 ── */
@@ -11,6 +11,8 @@
   padding: 0;
   box-sizing: border-box;
 }
+
+:root { color-scheme: dark; }
 
 html, body, #app {
   height: 100%;
@@ -24,8 +26,8 @@ html, body, #app {
 /* ── 滚动条暗色化 ── */
 ::-webkit-scrollbar { width: 6px; height: 6px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.10); border-radius: 3px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.20); }
+::-webkit-scrollbar-thumb { background: var(--scrollbar-thumb); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); }
 
 /* ── Element Plus 暗色覆写 ── */
 
@@ -60,7 +62,7 @@ html, body, #app {
 
 /* 输入框 */
 .el-input__wrapper {
-  background: rgba(255,255,255,0.04) !important;
+  background: var(--space-surface) !important;
   border-color: var(--border-default) !important;
   box-shadow: none !important;
 }
@@ -75,7 +77,7 @@ html, body, #app {
 /* 选择器/下拉 */
 .el-select .el-input__wrapper { /* 继承 input 样式 */ }
 .el-select-dropdown {
-  background: #1a1f2e !important;
+  background: var(--space-solid) !important;
   border-color: var(--border-subtle) !important;
 }
 .el-select-dropdown__item {
@@ -119,12 +121,12 @@ html, body, #app {
 
 /* 弹出菜单 */
 .el-popper.is-dark {
-  background: #1a1f2e !important;
+  background: var(--space-solid) !important;
   border: 1px solid var(--border-subtle) !important;
 }
 
 /* 进度条 */
-.el-progress-bar__outer { background: rgba(255,255,255,0.06) !important; }
+.el-progress-bar__outer { background: var(--space-surface) !important; }
 .el-progress-bar__inner { background: var(--vermilion) !important; }
 .el-progress__text { color: var(--text-secondary) !important; }
 
@@ -148,7 +150,7 @@ html, body, #app {
   border-color: var(--vermilion) !important;
 }
 .el-checkbox__inner {
-  background: rgba(255,255,255,0.06) !important;
+  background: var(--space-surface) !important;
   border-color: var(--border-default) !important;
 }
 
@@ -168,7 +170,7 @@ html, body, #app {
   transition: border-color var(--ease-out), box-shadow var(--ease-out);
 }
 .glass-panel:hover {
-  border-color: rgba(255, 255, 255, 0.14);
+  border-color: var(--border-strong);
 }
 
 /* 按钮 hover 缩放 */
@@ -180,7 +182,7 @@ html, body, #app {
 
 /* 毛玻璃面板 */
 .glass-panel {
-  background: rgba(255, 255, 255, 0.03);
+  background: var(--space-surface);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--border-subtle);
@@ -200,7 +202,7 @@ html, body, #app {
 /* 网格背景 */
 .bg-grid {
   background-image:
-    radial-gradient(circle, rgba(255,255,255,0.03) 1px, transparent 1px);
+    radial-gradient(circle, var(--border-subtle) 1px, transparent 1px);
   background-size: 24px 24px;
 }
 
@@ -208,7 +210,7 @@ html, body, #app {
 .graph-tooltip {
   position: absolute;
   padding: 8px 14px;
-  background: rgba(15, 18, 30, 0.95);
+  background: var(--tooltip-bg);
   backdrop-filter: blur(8px);
   color: var(--text-primary);
   font-size: var(--text-sm);

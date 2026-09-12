@@ -4,6 +4,8 @@
 // 单来源节点 → 对应论文序号色；多来源/未知 → 混合亮紫（白）。
 // ═══════════════════════════════════════════════════
 
+import { cssVar } from '@/design/tokens'
+
 export const paperPalette = ['#e8453c', '#00d4ff', '#10b981', '#f59e0b', '#a78bfa']
 
 /** 多来源 / 无来源节点的混合描边色（亮紫白） */
@@ -34,5 +36,5 @@ export function nodeStroke(d) {
   const pi = d ? d.paperIndex : undefined
   if (pi !== undefined && pi >= 0) return paperPalette[pi % paperPalette.length]
   if (pi === -1) return MIXED_SOURCE_STROKE
-  return (d && d.color) || 'rgba(255,255,255,0.35)'
+  return (d && d.color) || cssVar('--graph-link', 'rgba(255,255,255,0.35)')
 }

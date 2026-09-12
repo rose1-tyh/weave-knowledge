@@ -2,19 +2,21 @@
   <div class="view-switcher glass-panel" role="tablist" aria-label="视图切换">
     <button v-for="v in views" :key="v.key" class="vs-btn" :class="{ active: active === v.key }"
       :title="v.label" role="tab" :aria-selected="active === v.key" @click="$emit('switch', v.key)">
-      <span class="vs-icon" aria-hidden="true">{{ v.icon }}</span>
+      <el-icon class="vs-icon" aria-hidden="true"><component :is="v.icon" /></el-icon>
       <span class="vs-label">{{ v.label }}</span>
     </button>
   </div>
 </template>
 
 <script setup>
+import { Share, Grid, Operation } from '@element-plus/icons-vue'
+
 defineProps({ active: { type: String, default: 'graph' } })
 defineEmits(['switch'])
 const views = [
-  { key: 'graph', label: '图谱', icon: '◎' },
-  { key: 'tree', label: '层级', icon: '▦' },
-  { key: 'matrix', label: '矩阵', icon: '⊞' },
+  { key: 'graph', label: '图谱', icon: Share },
+  { key: 'tree', label: '层级', icon: Grid },
+  { key: 'matrix', label: '矩阵', icon: Operation },
 ]
 </script>
 
@@ -40,7 +42,7 @@ const views = [
   transition: all var(--ease-out);
   user-select: none;
 }
-.vs-btn:hover { color: var(--text-primary); background: rgba(255,255,255,0.06); }
+.vs-btn:hover { color: var(--text-primary); background: var(--hover-tint); }
 .vs-btn.active { color: var(--cyan); background: var(--cyan-bg); }
 .vs-icon { font-size: 14px; line-height: 1; }
 </style>

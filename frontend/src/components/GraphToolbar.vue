@@ -1,20 +1,22 @@
 <template>
   <div class="graph-toolbar glass-panel">
-    <button class="tb-btn" title="放大" @click="$emit('zoom-in')">+</button>
-    <button class="tb-btn" title="缩小" @click="$emit('zoom-out')">−</button>
-    <button class="tb-btn" title="重置视图" @click="$emit('reset')">⟲</button>
+    <button class="tb-btn" title="放大" @click="$emit('zoom-in')"><el-icon><Plus /></el-icon></button>
+    <button class="tb-btn" title="缩小" @click="$emit('zoom-out')"><el-icon><Minus /></el-icon></button>
+    <button class="tb-btn" title="重置视图" @click="$emit('reset')"><el-icon><Aim /></el-icon></button>
     <span class="tb-divider"></span>
-    <button class="tb-btn" :class="{ active: editing }" title="编辑模式" @click="$emit('toggle-edit')">✎</button>
-    <button class="tb-btn" title="撤销" :disabled="!canUndo" @click="$emit('undo')">↩</button>
-    <button class="tb-btn" title="重做" :disabled="!canRedo" @click="$emit('redo')">↪</button>
+    <button class="tb-btn" :class="{ active: editing }" title="编辑模式" @click="$emit('toggle-edit')"><el-icon><Edit /></el-icon></button>
+    <button class="tb-btn" title="撤销" :disabled="!canUndo" @click="$emit('undo')"><el-icon><RefreshRight /></el-icon></button>
+    <button class="tb-btn" title="重做" :disabled="!canRedo" @click="$emit('redo')"><el-icon><RefreshLeft /></el-icon></button>
     <span class="tb-divider"></span>
-    <button class="tb-btn" title="导出 PNG" @click="$emit('export-png')">🖼</button>
-    <button class="tb-btn" title="导出 JSON" @click="$emit('export-json')">JSON</button>
-    <button class="tb-btn" title="导出 Markdown" @click="$emit('export-md')">MD</button>
+    <button class="tb-btn" title="导出 PNG" @click="$emit('export-png')"><el-icon><Picture /></el-icon></button>
+    <button class="tb-btn tb-text" title="导出 JSON" @click="$emit('export-json')">JSON</button>
+    <button class="tb-btn tb-text" title="导出 Markdown / Anki" @click="$emit('export-md')">MD</button>
   </div>
 </template>
 
 <script setup>
+import { Plus, Minus, Aim, RefreshLeft, RefreshRight, Edit, Picture } from '@element-plus/icons-vue'
+
 defineProps({
   editing: Boolean,
   canUndo: Boolean,
@@ -45,7 +47,7 @@ defineEmits(['zoom-in', 'zoom-out', 'reset', 'toggle-edit', 'undo', 'redo', 'exp
   font-family: inherit;
   transition: all var(--ease-out);
 }
-.tb-btn:hover { background: rgba(255,255,255,0.08); color: var(--text-primary); }
+.tb-btn:hover { background: var(--hover-tint); color: var(--text-primary); }
 .tb-btn.active { color: var(--vermilion); background: var(--vermilion-bg); }
 .tb-btn:disabled { opacity: 0.3; cursor: not-allowed; }
 .tb-divider {

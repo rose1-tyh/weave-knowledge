@@ -6,7 +6,7 @@
         class="iw-mode" :class="{ active: i === current }"
         type="button"
         @click="current = i">
-        <span class="iw-mode-icon">{{ s.icon }}</span>
+        <el-icon class="iw-mode-icon"><component :is="s.icon" /></el-icon>
         <span class="iw-mode-label">{{ s.label }}</span>
       </button>
     </div>
@@ -54,6 +54,7 @@
 </template>
 
 <script setup>
+import { Document, EditPen, Link, Edit } from '@element-plus/icons-vue'
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
 import { uploadPaper, extractFromText, extractFromUrl, createEmptyPaper } from '@/api'
@@ -62,10 +63,10 @@ import UploadPanel from '@/components/UploadPanel.vue'
 const router = useRouter()
 
 const steps = [
-  { key: 'pdf', label: '上传文件', icon: '📄' },
-  { key: 'text', label: '粘贴文本', icon: '📝' },
-  { key: 'url', label: '网页链接', icon: '🔗' },
-  { key: 'manual', label: '手动创建', icon: '✏️' },
+  { key: 'pdf', label: '上传文件', icon: Document },
+  { key: 'text', label: '粘贴文本', icon: EditPen },
+  { key: 'url', label: '网页链接', icon: Link },
+  { key: 'manual', label: '手动创建', icon: Edit },
 ]
 
 const current = ref(0)
@@ -174,7 +175,7 @@ async function handleManual() {
   box-shadow: var(--vermilion-glow);
 }
 
-.iw-mode-icon { font-size: 22px; line-height: 1; }
+.iw-mode-icon { font-size: 22px; line-height: 1; color: var(--vermilion); }
 .iw-mode-label { font-size: var(--text-xs); letter-spacing: 0.04em; white-space: nowrap; }
 
 /* ── 内容区 ── */

@@ -1,6 +1,7 @@
 /* ═══════════════════════════════════════════════════
-   织识 v2.0 — 设计令牌
-   主题：新中式科技 · 暗色深空 + 霓虹发光
+   织识 v3.1 — 设计令牌
+   双主题：墨夜（暗色深空 + 霓虹发光，默认）/ 宣纸（暖纸墨字）
+   通过 useTheme 在 <html> 上切换 .light 类
    ═══════════════════════════════════════════════════ */
 
 :root {
@@ -146,4 +147,82 @@
   --glow-sm: 0 0 10px;
   --glow-md: 0 0 22px;
   --glow-lg: 0 0 40px;
+
+  /* ── 语义补充（弹层/滚动条/工具提示，供双主题覆盖） ── */
+  --space-solid: #1a1f2e;
+  --tooltip-bg: rgba(15, 18, 30, 0.95);
+  --scrollbar-thumb: rgba(255, 255, 255, 0.10);
+  --hover-tint: rgba(255, 255, 255, 0.05);
+  --graph-link: rgba(255, 255, 255, 0.20);
+  --graph-halo: rgba(255, 255, 255, 0.06);
+}
+
+/* ═══════════════════════════════════════════════════
+   宣纸主题（html.light）—— 暖纸底、墨字、朱砂印章
+   强调色不变；辉光/深空感降级为纸墨质感
+   ═══════════════════════════════════════════════════ */
+html.light {
+  /* ── 背景色阶 ── */
+  --space-deep: #f5f1e8;
+  --space-elevated: #fffdf8;
+  --space-surface: rgba(43, 38, 34, 0.04);
+  --space-overlay: rgba(250, 247, 240, 0.92);
+
+  /* ── 强调色辉光减弱（纸上不发光） ── */
+  --vermilion-glow: 0 1px 6px rgba(179, 48, 42, 0.18);
+  --cyan-glow: none;
+  --amber-glow: none;
+  --emerald-glow: none;
+  --violet-glow: none;
+
+  /* ── 文字色阶（墨色） ── */
+  --text-primary: #2b2622;
+  --text-secondary: rgba(43, 38, 34, 0.72);
+  --text-muted: rgba(43, 38, 34, 0.46);
+  --text-disabled: rgba(43, 38, 34, 0.24);
+
+  /* ── 边框 ── */
+  --border-subtle: rgba(43, 38, 34, 0.08);
+  --border-default: rgba(43, 38, 34, 0.13);
+  --border-strong: rgba(43, 38, 34, 0.22);
+  --border-glow: rgba(179, 48, 42, 0.35);
+
+  /* ── 阴影 ── */
+  --shadow-card: 0 1px 3px rgba(60, 48, 38, 0.10), 0 0 0 1px rgba(43, 38, 34, 0.04);
+  --shadow-elevated: 0 4px 16px rgba(60, 48, 38, 0.14), 0 0 0 1px rgba(43, 38, 34, 0.05);
+
+  /* ── Element Plus 亮色映射 ── */
+  --el-bg-color: var(--space-elevated);
+  --el-bg-color-page: var(--space-deep);
+  --el-bg-color-overlay: var(--space-solid);
+  --el-text-color-primary: var(--text-primary);
+  --el-text-color-regular: var(--text-secondary);
+  --el-text-color-secondary: var(--text-muted);
+  --el-text-color-placeholder: var(--text-disabled);
+  --el-border-color: var(--border-default);
+  --el-border-color-light: var(--border-subtle);
+  --el-border-color-lighter: var(--border-subtle);
+  --el-border-color-dark: var(--border-strong);
+  --el-fill-color: rgba(43, 38, 34, 0.04);
+  --el-fill-color-light: rgba(43, 38, 34, 0.06);
+  --el-fill-color-blank: var(--space-elevated);
+  --el-mask-color: rgba(43, 38, 34, 0.45);
+
+  --el-color-primary: var(--vermilion);
+  --el-color-primary-light-3: var(--vermilion-hover);
+  --el-color-primary-light-5: #f37871;
+  --el-color-primary-light-7: #f7a39e;
+  --el-color-primary-light-8: #fac5c2;
+  --el-color-primary-light-9: #fde8e6;
+  --el-color-primary-dark-2: var(--vermilion-dim);
+
+  /* ── 语义补充 ── */
+  --space-solid: #fffdf8;
+  --tooltip-bg: rgba(255, 253, 248, 0.97);
+  --scrollbar-thumb: rgba(43, 38, 34, 0.18);
+  --hover-tint: rgba(43, 38, 34, 0.05);
+  --graph-link: rgba(43, 38, 34, 0.28);
+  --graph-halo: rgba(43, 38, 34, 0.08);
+
+  color-scheme: light;
 }

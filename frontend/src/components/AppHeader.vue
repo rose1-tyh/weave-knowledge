@@ -9,20 +9,28 @@
     <!-- 主导航 -->
     <nav class="main-nav">
       <router-link to="/" class="nav-item" exact-active-class="active">
-        <span class="nav-icon">◆</span>首页
+        <el-icon class="nav-icon"><HomeFilled /></el-icon>首页
       </router-link>
       <router-link to="/library" class="nav-item" active-class="active">
-        <span class="nav-icon">▣</span>知识库
+        <el-icon class="nav-icon"><Collection /></el-icon>知识库
       </router-link>
       <router-link to="/explore" class="nav-item" active-class="active">
-        <span class="nav-icon">◎</span>全局探索
+        <el-icon class="nav-icon"><Connection /></el-icon>全局探索
       </router-link>
     </nav>
 
-    <!-- 右侧：上传按钮 -->
+    <!-- 右侧：主题切换 + 上传按钮 -->
     <div class="header-actions">
+      <button
+        class="btn-theme"
+        :title="theme === 'dark' ? '切换到宣纸主题' : '切换到墨夜主题'"
+        data-test="theme-toggle"
+        @click="toggleTheme"
+      >
+        <el-icon><Moon v-if="theme === 'dark'" /><Sunny v-else /></el-icon>
+      </button>
       <button class="btn-upload" @click="router.push('/import')">
-        <span class="btn-icon">+</span>上传论文
+        <el-icon class="btn-icon"><Plus /></el-icon>上传论文
       </button>
     </div>
   </header>
@@ -30,7 +38,11 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
+import { HomeFilled, Collection, Connection, Moon, Sunny, Plus } from '@element-plus/icons-vue'
+import { useTheme } from '@/composables/useTheme'
+
 const router = useRouter()
+const { theme, toggleTheme } = useTheme()
 </script>
 
 <style scoped>
@@ -94,14 +106,42 @@ const router = useRouter()
 }
 .nav-item:hover {
   color: var(--text-primary);
-  background: rgba(255,255,255,0.05);
+  background: var(--hover-tint);
 }
 .nav-item.active {
   color: var(--vermilion);
   background: var(--vermilion-bg);
 }
 .nav-icon {
-  font-size: 10px;
+  font-size: 14px;
+}
+
+/* 右侧动作区 */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+}
+
+/* 主题切换 */
+.btn-theme {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-default);
+  border-radius: var(--radius-md);
+  background: var(--space-surface);
+  color: var(--text-secondary);
+  font-size: 16px;
+  cursor: pointer;
+  transition: all var(--ease-out);
+}
+.btn-theme:hover {
+  color: var(--amber);
+  border-color: var(--amber);
+  transform: translateY(-1px);
 }
 
 /* 上传按钮 */
@@ -126,7 +166,6 @@ const router = useRouter()
   box-shadow: var(--vermilion-glow);
 }
 .btn-icon {
-  font-size: 16px;
-  font-weight: 300;
+  font-size: 14px;
 }
 </style>

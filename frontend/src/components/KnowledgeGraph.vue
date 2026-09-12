@@ -28,6 +28,7 @@
 <script setup>
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as d3 from 'd3'
+import { TYPE_META, TYPE_SHORT, REL_META, cssVar } from '@/design/tokens'
 import { nodeStroke } from '@/utils/fusion'
 import { nodeStatusVisual } from '@/utils/confidence'
 import { useGraphStore } from '@/stores/graph'
@@ -46,20 +47,9 @@ const tooltip = ref(null)
 
 const graphStore = useGraphStore()
 
-const conceptTypes = [
-  { key: 'method', label: '方法', color: '#e8453c' },
-  { key: 'theory', label: '理论', color: '#8b5cf6' },
-  { key: 'dataset', label: '数据集', color: '#10b981' },
-  { key: 'finding', label: '发现', color: '#f59e0b' },
-  { key: 'tool', label: '工具', color: '#00d4ff' },
-]
-const relationTypes = [
-  { key: 'supports', label: '支撑', color: '#10b981' },
-  { key: 'contradicts', label: '矛盾', color: '#e8453c' },
-  { key: 'extends', label: '扩展', color: '#f59e0b' },
-  { key: 'cites', label: '引用', color: '#6b7280' },
-  { key: 'uses', label: '使用', color: '#00d4ff' },
-]
+// 图例数据源：设计令牌单一来源（短标签适配图例空间）
+const conceptTypes = Object.entries(TYPE_META).map(([key, m]) => ({ key, label: TYPE_SHORT[key], color: m.color }))
+const relationTypes = Object.entries(REL_META).map(([key, m]) => ({ key, label: m.label, color: m.color }))
 
 let simulation = null
 let resizeObserver = null
@@ -135,7 +125,7 @@ function buildScene() {
   // 背景微粒网格
   const defs = svg.append('defs')
   defs.append('pattern').attr('id', 'grid').attr('width', 24).attr('height', 24).attr('patternUnits', 'userSpaceOnUse')
-    .append('circle').attr('cx', 12).attr('cy', 12).attr('r', 0.6).attr('fill', 'rgba(255,255,255,0.06)')
+    .append('circle').attr('cx', 12).attr('cy', 12).attr('r', 0.6).attr('fill', () => cssVar('--graph-halo', 'rgba(255,255,255,0.06)'))
   svg.append('rect').attr('width', W).attr('height', H).attr('fill', 'url(#grid)')
 
   // 发光滤镜
@@ -258,7 +248,7 @@ function bindLinks(links) {
   linkLines = enter.merge(linkLines)
   linkLines
     .attr('class', d => nodeStatusVisual(d).dashed ? 'link-dashed' : 'link-solid')
-    .attr('stroke', d => d.color || 'rgba(255,255,255,0.2)')
+    .attr('stroke', d => d.color || cssVar('--graph-link', 'rgba(255,255,255,0.2)'))
     .attr('stroke-opacity', 0.6)
     .attr('stroke-width', d => d.type === 'contradicts' ? 2 : 1.2)
     .attr('opacity', d => nodeStatusVisual(d).opacity)
@@ -689,10 +679,10 @@ defineExpose({ zoomBy, resetZoom, zoomToNode })
 .legend-row { display: flex; align-items: center; gap: var(--space-sm); flex-wrap: wrap; }
 .legend-label { color: var(--text-muted); margin-right: 4px; }
 .legend-chip { display: flex; align-items: center; gap: 4px; color: var(--text-secondary); cursor: pointer; padding: 2px 6px; border-radius: var(--radius-sm); transition: color var(--ease-out), background var(--ease-out); user-select: none; }
-.legend-chip:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
-.legend-chip.active { color: #fff; background: rgba(255,255,255,0.12); }
+.legend-chip:hover { background: var(--hover-tint); color: var(--text-primary); }
+.legend-chip.active { color: var(--text-primary); background: var(--border-default); }
 .legend-chip i { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
 .legend-row .legend-seal { width: 10px; height: 10px; border: 1px solid #e8453c; border-radius: 2px; background: transparent; }
-.legend-row .legend-dash { width: 14px; height: 2px; border-top: 2px dashed rgba(255,255,255,0.5); background: transparent; border-radius: 0; }
+.legend-row .legend-dash { width: 14px; height: 2px; border-top: 2px dashed var(--text-secondary); background: transparent; border-radius: 0; }
 .legend-row:last-child .legend-chip i { width: 14px; height: 2px; border-radius: 1px; }
 </style>

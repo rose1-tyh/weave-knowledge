@@ -55,7 +55,7 @@ defineExpose({ focus, clear: () => { query.value = ''; searched.value = false } 
   width: 100%; padding: 8px 12px;
   border: 1px solid var(--border-subtle);
   border-radius: var(--radius-md);
-  background: rgba(255,255,255,0.04);
+  background: var(--space-surface);
   color: var(--text-primary);
   font-size: var(--text-sm);
   font-family: inherit;

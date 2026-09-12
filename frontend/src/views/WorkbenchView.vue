@@ -170,6 +170,7 @@ import { ref, computed, onMounted, onUnmounted, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { Search } from '@element-plus/icons-vue'
+import { TYPE_SHORT } from '@/design/tokens'
 import { useGraphStore } from '@/stores/graph'
 import { useEditorStore } from '@/stores/editor'
 import KnowledgeGraph from '@/components/KnowledgeGraph.vue'
@@ -229,8 +230,7 @@ const searchResults = computed(() => {
     .slice(0, 8)
 })
 
-const typeMeta = { method: '方法', theory: '理论', dataset: '数据集', finding: '发现', tool: '工具' }
-function typeLabel(t) { return typeMeta[t] || (t ? String(t) : '') }
+function typeLabel(t) { return TYPE_SHORT[t] || (t ? String(t) : '') }
 
 function onSearchFocus() {
   searchOpen.value = true
@@ -500,7 +500,7 @@ async function exportMarkdown() {
   cursor: pointer;
   transition: transform var(--ease-out-soft), background var(--ease-out), border-color var(--ease-out), color var(--ease-out);
 }
-.wb-sidebar-toggle:hover { color: var(--text-primary); border-color: var(--border-strong); background: rgba(255,255,255,0.06); }
+.wb-sidebar-toggle:hover { color: var(--text-primary); border-color: var(--border-strong); background: var(--hover-tint); }
 .wb-sidebar-toggle .wst-chevron { display: block; transition: transform var(--ease-out-soft); }
 .workbench.sidebar-collapsed .wb-sidebar-toggle { transform: translateX(var(--right-panel-width)); }
 .workbench.sidebar-collapsed .wb-sidebar-toggle .wst-chevron { transform: rotate(180deg); }
@@ -558,7 +558,7 @@ async function exportMarkdown() {
 /* ── 低置信聚合条：绝对定位于图谱左上，与搜索框同级 ── */
 .verify-strip { position: absolute; top: var(--space-md); left: var(--space-md); z-index: 5; display: flex; gap: var(--space-sm); align-items: center; font-size: var(--text-xs); color: var(--text-muted); padding: 6px 12px; border-radius: var(--radius-md); background: var(--space-elevated); border: 1px solid var(--border-subtle); }
 .verify-strip .vs-item.warn { color: #f59e0b; }
-.verify-strip .vs-item.active { color: #fff; background: rgba(255,255,255,0.1); cursor: pointer; }
+.verify-strip .vs-item.active { color: var(--text-primary); background: var(--border-default); cursor: pointer; }
 .gs-results, .gs-empty {
   position: absolute;
   top: calc(100% + 6px);
@@ -582,7 +582,7 @@ async function exportMarkdown() {
   color: var(--text-secondary);
 }
 .gs-item.hovered, .gs-item:hover {
-  background: rgba(255,255,255,0.06);
+  background: var(--hover-tint);
   color: var(--text-primary);
 }
 .gs-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
@@ -595,9 +595,9 @@ async function exportMarkdown() {
 .ms-header { display: flex; align-items: center; gap: var(--space-sm); margin-bottom: var(--space-md); }
 .ms-header h4 { font-family: var(--font-display); font-size: var(--text-md); color: var(--text-primary); flex: 1; }
 .ms-clear { width: 28px; height: 28px; border: none; background: none; color: var(--text-muted); font-size: 20px; cursor: pointer; border-radius: var(--radius-sm); display: flex; align-items: center; justify-content: center; }
-.ms-clear:hover { background: rgba(255,255,255,0.06); color: var(--text-primary); }
+.ms-clear:hover { background: var(--hover-tint); color: var(--text-primary); }
 .ms-list { display: flex; flex-direction: column; gap: 4px; max-height: 360px; overflow-y: auto; margin-bottom: var(--space-md); }
-.ms-item { display: flex; align-items: center; gap: var(--space-sm); padding: 6px 8px; border-radius: var(--radius-sm); font-size: var(--text-sm); color: var(--text-secondary); background: rgba(255,255,255,0.03); }
+.ms-item { display: flex; align-items: center; gap: var(--space-sm); padding: 6px 8px; border-radius: var(--radius-sm); font-size: var(--text-sm); color: var(--text-secondary); background: var(--space-surface); }
 .ms-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 6px currentColor; }
 .ms-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ms-type { font-size: var(--text-xs); color: var(--text-muted); flex-shrink: 0; }

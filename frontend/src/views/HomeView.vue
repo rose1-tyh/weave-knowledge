@@ -37,7 +37,7 @@
         <div class="stats-row">
           <RevealOnScroll v-for="(s, i) in statCards" :key="s.label" :delay="i * 150" direction="up">
             <div class="stat-card glass-panel">
-              <div class="stat-icon" :class="s.accent">{{ s.icon }}</div>
+              <div class="stat-icon" :class="s.accent"><el-icon :size="22"><component :is="s.icon" /></el-icon></div>
               <div class="stat-body">
                 <span class="stat-value"><CountUp :value="s.value" /></span>
                 <span class="stat-label">{{ s.label }}</span>
@@ -216,6 +216,7 @@
 </template>
 
 <script setup>
+import { Document, Aim, Connection } from '@element-plus/icons-vue'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
@@ -229,9 +230,9 @@ const lib = useLibraryStore()
 
 const loading = ref(true)
 const statCards = ref([
-  { label: '论文总数', value: 0, icon: '▣', accent: 'accent-cyan' },
-  { label: '核心概念', value: 0, icon: '◎', accent: 'accent-vermilion' },
-  { label: '知识关系', value: 0, icon: '◆', accent: 'accent-amber' },
+  { label: '论文总数', value: 0, icon: Document, accent: 'accent-cyan' },
+  { label: '核心概念', value: 0, icon: Aim, accent: 'accent-vermilion' },
+  { label: '知识关系', value: 0, icon: Connection, accent: 'accent-amber' },
 ])
 const recentPapers = ref([])
 

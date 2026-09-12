@@ -21,9 +21,9 @@ const styleObj = computed(() => ({
 <style scoped>
 .skeleton-block {
   background: linear-gradient(100deg,
-    rgba(255,255,255,0.06) 40%,
-    rgba(255,255,255,0.12) 50%,
-    rgba(255,255,255,0.06) 60%);
+    var(--space-surface) 40%,
+    var(--border-default) 50%,
+    var(--space-surface) 60%);
   background-size: 200% 100%;
   animation: shimmer 1.4s ease-in-out infinite;
 }

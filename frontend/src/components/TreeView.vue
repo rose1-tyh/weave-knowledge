@@ -25,20 +25,13 @@
 
 <script setup>
 import { computed, reactive, watch } from 'vue'
+import { typeMeta } from '@/design/tokens'
 
 const props = defineProps({
   concepts: { type: Array, default: () => [] },
   selectedId: { type: String, default: null },
 })
 defineEmits(['select'])
-
-const typeMeta = {
-  method: { label: '研究方法', color: '#e8453c' },
-  theory: { label: '理论基础', color: '#8b5cf6' },
-  dataset: { label: '数据集', color: '#10b981' },
-  finding: { label: '研究发现', color: '#f59e0b' },
-  tool: { label: '工具/系统', color: '#00d4ff' },
-}
 
 const tree = computed(() => {
   const groups = {}
@@ -48,8 +41,8 @@ const tree = computed(() => {
     groups[t].push(c)
   }
   return Object.entries(groups).map(([type, items]) => ({
-    label: typeMeta[type]?.label || type,
-    color: typeMeta[type]?.color || '#6b7280',
+    label: typeMeta(type)?.label,
+    color: typeMeta(type)?.color,
     items,
     expanded: true,
   }))
@@ -67,7 +60,7 @@ const tree = computed(() => {
 .tv-group-label { font-size: var(--text-xs); font-weight: 600; color: var(--text-secondary); text-transform: uppercase; letter-spacing: 0.05em; }
 .tv-count { font-size: var(--text-xs); color: var(--text-muted); margin-left: auto; }
 .tv-item { padding: 6px 8px 6px 32px; cursor: pointer; border-radius: var(--radius-sm); font-size: var(--text-sm); color: var(--text-secondary); }
-.tv-item:hover { background: rgba(255,255,255,0.04); color: var(--text-primary); }
+.tv-item:hover { background: var(--space-surface); color: var(--text-primary); }
 .tv-item.selected { background: var(--vermilion-bg); color: var(--vermilion); }
 .tv-name { display: block; }
 .tv-def { display: block; font-size: var(--text-xs); color: var(--text-muted); margin-top: 2px; }

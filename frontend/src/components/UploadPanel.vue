@@ -43,7 +43,7 @@ function onFileChange(e) { const f = e.target.files?.[0]; if (f) emit('upload', 
   text-align: center;
   cursor: pointer;
   transition: all var(--ease-out);
-  background: rgba(255,255,255,0.02);
+  background: var(--space-surface);
 }
 .upload-panel:hover { border-color: var(--vermilion); background: var(--vermilion-bg); }
 .upload-panel.is-dragover { border-color: var(--vermilion); background: var(--vermilion-bg); border-style: solid; box-shadow: var(--vermilion-glow); }

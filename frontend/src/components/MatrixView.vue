@@ -27,14 +27,13 @@
 
 <script setup>
 import { computed } from 'vue'
+import { relMeta } from '@/design/tokens'
 
 const props = defineProps({
   concepts: { type: Array, default: () => [] },
   links: { type: Array, default: () => [] },
 })
 defineEmits(['select-relation'])
-
-const relColors = { supports: '#10b981', contradicts: '#e8453c', extends: '#f59e0b', cites: '#6b7280', uses: '#00d4ff' }
 
 const matrix = computed(() => {
   const names = props.concepts.map(c => c.name)
@@ -50,7 +49,7 @@ const matrix = computed(() => {
 
 function cellColor(cell) {
   if (!cell) return 'transparent'
-  return (relColors[cell.type] || '#6b7280') + '44'
+  return relMeta(cell.type).color + '44'
 }
 </script>
 
