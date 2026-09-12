@@ -10,20 +10,23 @@ from fastapi.staticfiles import StaticFiles
 from routers import upload, knowledge
 from database import init_db, close_db
 from config import PAPER_STORAGE_DIR
+from services.extraction_service import extraction_manager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     os.makedirs(PAPER_STORAGE_DIR, exist_ok=True)
     await init_db()
+    # 上次进程遗留的"运行中"任务已随进程消亡，标记为失败以便前端重试
+    await extraction_manager.recover_stale()
     yield
     await close_db()
 
 
 app = FastAPI(
-    title="织识 API v2.0",
-    description="学术知识重构引擎 —— 知识库管理 + AI 提取 + 知识编辑 + 跨论文融合",
-    version="2.0.0",
+    title="织识 API v3.1",
+    description="学术知识重构引擎 —— 知识库管理 + AI 提取 + 知识编辑 + 跨论文融合 + 混合检索",
+    version="3.1.0",
     lifespan=lifespan,
 )
 

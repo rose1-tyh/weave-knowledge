@@ -1,7 +1,17 @@
 """知识提取、图谱数据、CRUD、融合、搜索接口"""
 
+import asyncio
+import json
+import os
+import re
+import uuid
 from datetime import datetime
+
+import requests
+from bs4 import BeautifulSoup
 from fastapi import APIRouter, HTTPException
+from fastapi.responses import StreamingResponse
+
 from models.schemas import (
     R, ExtractRequest, ConceptCreate, ConceptUpdate,
     RelationCreate, RelationUpdate, FusionRequest, MergeSuggestRequest,
@@ -12,22 +22,18 @@ from services.parser_registry import get_parser_for_paper
 from services.confidence_service import backfill_paper_confidences
 from services.evidence_service import evidence_context_for_paper
 from services.extraction_service import extraction_manager
-import os
-import re
-import uuid
-import requests
-from bs4 import BeautifulSoup
 
 router = APIRouter(prefix="/api", tags=["knowledge"])
 
 
-# ── AI 提取（后台异步任务，前端轮询 /extract-status） ──
+# ── AI 提取（后台异步任务：SSE 实时进度 / 轮询降级 / 失败重试） ──
 
 @router.post("/extract")
 async def extract_knowledge(req: ExtractRequest):
     """对已上传的论文（PDF / DOCX）执行 AI 知识提取。
 
-    提交后台任务后立即返回；进度经 GET /extract-status/{paper_id} 查询。
+    提交后台任务后立即返回；进度经 SSE GET /extract/progress/{paper_id} 实时推送，
+    或 GET /extract-status/{paper_id} 轮询查询。
     文本/URL 创建的论文（无 parser）若已有正文，同样可提交。
     """
     paper = await LibraryService.get_paper(req.paper_id)
@@ -45,8 +51,51 @@ async def extract_knowledge(req: ExtractRequest):
 
 @router.get("/extract-status/{paper_id}")
 async def extract_status(paper_id: str):
-    """查询论文提取任务状态：pending / processing / done / failed / not_found"""
+    """查询论文提取任务状态：pending / processing / done / failed / not_found
+
+    附带持久化的 stage/progress/detail/message/error（extract_tasks 表）。
+    """
     return R.success(data=await extraction_manager.status(paper_id))
+
+
+async def _progress_events(paper_id: str):
+    """SSE 事件流：状态快照变化即推送，15s 心跳，终态后自动关闭（最长 20 分钟）"""
+    last_payload = None
+    idle = 0.0
+    elapsed = 0.0
+    while elapsed < 1200:
+        snap = await extraction_manager.status(paper_id)
+        if snap != last_payload:
+            yield f"event: progress\ndata: {json.dumps(snap, ensure_ascii=False)}\n\n"
+            last_payload = snap
+            if snap["status"] in ("done", "failed", "not_found"):
+                return
+        await asyncio.sleep(0.5)
+        idle += 0.5
+        elapsed += 0.5
+        if idle >= 15.0:
+            yield ": keep-alive\n\n"
+            idle = 0.0
+
+
+@router.get("/extract/progress/{paper_id}")
+async def extract_progress(paper_id: str):
+    """SSE 实时提取进度：queued→parsing→extracting(i/n)→scoring→graphing→done/failed"""
+    return StreamingResponse(
+        _progress_events(paper_id),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+
+
+@router.post("/extract/{paper_id}/retry")
+async def retry_extract(paper_id: str):
+    """重试提取：重新提交后台任务（覆盖上次的任务记录与失败状态）"""
+    paper = await LibraryService.get_paper(paper_id)
+    if paper is None:
+        raise HTTPException(404, detail="论文不存在")
+    extraction_manager.retry(paper_id)
+    return R.success(data={"paperId": paper_id, "status": "processing"})
 
 
 # ── 文本/URL 提取 ──
@@ -70,30 +119,33 @@ async def extract_from_text(req: TextExtractRequest):
     return R.success(data={"paperId": paper_id, "status": "processing"})
 
 
+def _fetch_url_text(url: str) -> tuple[str, str]:
+    """同步抓取网页并清洗出正文（供线程池调用，避免阻塞事件循环）"""
+    resp = requests.get(url, timeout=15, headers={
+        "User-Agent": "Mozilla/5.0 (compatible; WeaveKnowledge/2.0)"
+    })
+    resp.raise_for_status()
+    resp.encoding = resp.apparent_encoding or "utf-8"
+    soup = BeautifulSoup(resp.text, "html.parser")
+    for tag in soup(["script", "style", "nav", "footer", "header"]):
+        tag.decompose()
+    title = soup.title.string.strip() if soup.title and soup.title.string else url
+    text = soup.get_text(separator="\n")
+    lines = [l.strip() for l in text.splitlines() if l.strip()]
+    return title, "\n".join(lines)[:80000]
+
+
 @router.post("/extract-url")
 async def extract_from_url(req: UrlExtractRequest):
     """从网页链接抓取文本并提取知识"""
     if not req.url.strip():
         raise HTTPException(400, detail="URL 为空")
 
-    # 抓取网页
+    # 抓取网页（线程池执行：requests + BS4 解析均为同步阻塞调用）
     try:
-        resp = requests.get(req.url, timeout=15, headers={
-            "User-Agent": "Mozilla/5.0 (compatible; WeaveKnowledge/2.0)"
-        })
-        resp.raise_for_status()
-        resp.encoding = resp.apparent_encoding or "utf-8"
+        title, text = await asyncio.to_thread(_fetch_url_text, req.url.strip())
     except Exception as e:
         raise HTTPException(400, detail=f"网页抓取失败: {str(e)}")
-
-    # 提取文本
-    soup = BeautifulSoup(resp.text, "html.parser")
-    for tag in soup(["script", "style", "nav", "footer", "header"]):
-        tag.decompose()
-    text = soup.get_text(separator="\n")
-    lines = [l.strip() for l in text.splitlines() if l.strip()]
-    text = "\n".join(lines)[:80000]  # 限制长度
-    title = soup.title.string.strip() if soup.title else req.url
 
     paper_id = uuid.uuid4().hex[:12]
     await LibraryService.create_paper(

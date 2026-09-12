@@ -75,6 +75,17 @@ async def init_db():
             UNIQUE(concept_name_a, paper_id_a, concept_name_b, paper_id_b)
         );
 
+        -- 提取任务持久化：每篇论文保留最新一次任务的阶段/进度/错误（可跨重启查询、可重试）
+        CREATE TABLE IF NOT EXISTS extract_tasks (
+            paper_id TEXT PRIMARY KEY REFERENCES papers(id) ON DELETE CASCADE,
+            stage TEXT DEFAULT 'queued',
+            progress REAL DEFAULT 0,
+            detail TEXT DEFAULT '',
+            message TEXT DEFAULT '',
+            error TEXT DEFAULT '',
+            updated_at TEXT NOT NULL
+        );
+
         -- 概念全文索引（FTS5 trigram：支持中文子串匹配；<3 字符查询回退 LIKE）
         CREATE VIRTUAL TABLE IF NOT EXISTS concepts_fts USING fts5(
             name, definition,

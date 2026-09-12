@@ -36,7 +36,7 @@ async def test_submit_creates_task_and_status(db, monkeypatch):
 
     st = await mgr.status("p1")
     assert st["status"] in ("processing", "done")
-    assert "error" not in st or st["error"] is None
+    assert not st.get("error")
 
     # 等待后台任务收尾，避免 fixture 关闭连接时任务仍在访问
     await asyncio.gather(*mgr._tasks.values(), return_exceptions=True)
@@ -74,7 +74,11 @@ async def test_run_success_flow_writes_db(db, monkeypatch):
         "relations": [],
     }
     from services import extraction_service as es
-    monkeypatch.setattr(es.AIService, "extract_knowledge", lambda self, text, title: fake_graph)
+
+    async def fake_extract(self, text, title, on_progress=None):
+        return fake_graph
+
+    monkeypatch.setattr(es.AIService, "extract_knowledge", fake_extract)
 
     mgr = ExtractionManager()
     await mgr._run("p1")
@@ -96,7 +100,7 @@ async def test_run_failure_sets_failed(db, monkeypatch):
 
     from services import extraction_service as es
 
-    def boom(self, text, title):
+    async def boom(self, text, title, on_progress=None):
         raise RuntimeError("AI 服务不可用")
 
     monkeypatch.setattr(es.AIService, "extract_knowledge", boom)
@@ -115,7 +119,11 @@ async def test_run_empty_concepts_sets_failed(db, monkeypatch):
     await _seed_paper(db)
 
     from services import extraction_service as es
-    monkeypatch.setattr(es.AIService, "extract_knowledge", lambda self, text, title: {"concepts": [], "relations": []})
+
+    async def fake_empty(self, text, title, on_progress=None):
+        return {"concepts": [], "relations": []}
+
+    monkeypatch.setattr(es.AIService, "extract_knowledge", fake_empty)
 
     mgr = ExtractionManager()
     await mgr._run("p1")

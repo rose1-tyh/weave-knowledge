@@ -1,5 +1,6 @@
 """AI 知识提取服务 —— 支持 Claude（Anthropic SDK）与 DeepSeek 等 OpenAI 兼容接口"""
 
+import asyncio
 import json
 import re
 import requests
@@ -52,30 +53,37 @@ class AIService:
         else:
             self._anthropic = None
 
-    def extract_knowledge(self, full_text: str, paper_title: str) -> dict:
-        """从论文全文中提取知识图谱（容错归一化 + 置信度交叉）"""
-        if len(full_text) <= MAX_CHUNK_CHARS:
-            raw = self._extract_single(full_text, paper_title)
-        else:
-            raw = self._extract_chunked(full_text, paper_title)
-        sanitized = self._sanitize_result(raw)
-        return enrich(sanitized, full_text)
+    async def extract_knowledge(self, full_text: str, paper_title: str, on_progress=None) -> dict:
+        """从论文全文中提取知识图谱（容错归一化 + 置信度交叉）
 
-    def _extract_chunked(self, full_text: str, paper_title: str) -> dict:
-        """长文本分片提取，合并去重（概念按 name 首现保留，关系按 (source,target,type) 去重）"""
+        on_progress: async callable(stage, progress, detail) —— 分片进度回调，
+        extracting 阶段在 0.2→0.85 区间内按分片线性推进。
+        LLM 网络调用经线程池执行，不阻塞事件循环。
+        """
         chunks = self._chunk_text(full_text)
+        n = len(chunks)
+        if on_progress:
+            await on_progress("chunking", 0.15, f"{n}" if n > 1 else "")
         all_concepts = {}
         all_relations = []
 
         for i, chunk in enumerate(chunks):
-            chunk_label = f"{paper_title}（第{i+1}/{len(chunks)}段）"
-            result = self._extract_single(chunk, chunk_label)
+            chunk_label = f"{paper_title}（第{i+1}/{n}段）" if n > 1 else paper_title
+            if on_progress:
+                await on_progress("extracting", 0.2 + 0.65 * (i / n), f"{i+1}/{n}")
+            result = await asyncio.to_thread(self._extract_single, chunk, chunk_label)
             for c in result.get("concepts", []):
                 if c["name"] not in all_concepts:
                     all_concepts[c["name"]] = c
             all_relations.extend(result.get("relations", []))
 
-        # 去重关系
+        raw = self._merge_results(all_concepts, all_relations)
+        sanitized = self._sanitize_result(raw)
+        return enrich(sanitized, full_text)
+
+    @staticmethod
+    def _merge_results(all_concepts: dict, all_relations: list) -> dict:
+        """多分片合并：概念按 name 首现保留，关系按 (source,target,type) 去重"""
         seen = set()
         unique_relations = []
         for r in all_relations:
@@ -83,7 +91,6 @@ class AIService:
             if key not in seen:
                 seen.add(key)
                 unique_relations.append(r)
-
         return {
             "concepts": list(all_concepts.values()),
             "relations": unique_relations,
