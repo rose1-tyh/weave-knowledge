@@ -54,6 +54,7 @@ const relationTypes = Object.entries(REL_META).map(([key, m]) => ({ key, label: 
 
 let simulation = null
 let resizeObserver = null
+let themeObserver = null
 let dragSourceNode = null
 let zoomBehavior = null
 let currentTransform = null
@@ -71,10 +72,17 @@ onMounted(() => {
   render()
   resizeObserver = new ResizeObserver(onResize)
   resizeObserver.observe(container.value)
+  // 主题切换（html.light 类变化）→ 重建场景以刷新 SVG 内的主题色属性
+  themeObserver = new MutationObserver(() => {
+    sceneBuilt = false
+    render()
+  })
+  themeObserver.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
 })
 onUnmounted(() => {
   if (simulation) simulation.stop()
   if (resizeObserver) resizeObserver.disconnect()
+  if (themeObserver) themeObserver.disconnect()
   cancelBoxSelect() // 卸载时清理可能残留的 window mousemove/mouseup 监听
 })
 
@@ -357,7 +365,7 @@ function bindNodes(nodes) {
   // 节点主体（描边支持融合来源着色：paperIndex → 论文色；-1 → 混合亮紫）
   nodeGroups.select('circle:nth-child(2)')
     .attr('r', 18)
-    .attr('fill', '#111827')
+    .attr('fill', () => cssVar('--graph-node-fill', '#111827'))
     .attr('stroke', d => nodeStroke(d))
     .attr('stroke-width', 2)
     .attr('stroke-dasharray', d => nodeStatusVisual(d).dashed ? '4,3' : null)
@@ -378,11 +386,11 @@ function bindNodes(nodes) {
     .text(d => d.name.length > 5 ? d.name.slice(0, 5) + '…' : d.name)
     .attr('text-anchor', 'middle')
     .attr('dy', '0.35em')
-    .attr('fill', '#fff')
+    .attr('fill', () => cssVar('--graph-node-text', '#fff'))
     .attr('font-size', d => d.name.length > 5 ? 10 : 12)
     .attr('font-weight', 500)
     .attr('pointer-events', 'none')
-    .attr('style', 'text-shadow: 0 0 4px rgba(0,0,0,0.8)')
+    .attr('style', () => `text-shadow: ${cssVar('--graph-node-text-shadow', '0 0 4px rgba(0,0,0,0.8)')}`)
 
   // 已确认节点印章：按需 join（状态变化时增删），位于节点组最上层
   nodeGroups.selectAll('g.node-seal')
