@@ -29,6 +29,7 @@
 import { ref, onMounted, onUnmounted, watch } from 'vue'
 import * as d3 from 'd3'
 import { TYPE_META, TYPE_SHORT, REL_META, cssVar } from '@/design/tokens'
+import { markdownPlain } from '@/utils/markdown'
 import { nodeStroke } from '@/utils/fusion'
 import { nodeStatusVisual } from '@/utils/confidence'
 import { useGraphStore } from '@/stores/graph'

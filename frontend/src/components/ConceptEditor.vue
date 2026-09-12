@@ -15,7 +15,12 @@
         <span class="ce-conf">置信度 {{ confPercent(concept.confidence) }}</span>
       </div>
       <p v-if="isLowConfidence(concept.confidence)" class="ce-lowhint">低置信，建议人工确认</p>
-      <p class="ce-def">{{ concept.definition }}</p>
+      <MarkdownEditor
+        v-if="concept.definition"
+        :model-value="concept.definition"
+        :editable="false"
+      />
+      <p v-else class="ce-def ce-def-empty">暂无定义</p>
       <div class="ce-meta">
         <span>原文页码：第 {{ concept.page }} 页</span>
       </div>
@@ -39,7 +44,7 @@
         <label>名称</label>
         <input v-model="form.name" class="ce-input" placeholder="概念名称（2-8 字）" />
         <label>定义</label>
-        <textarea v-model="form.definition" class="ce-textarea" rows="3" placeholder="一句话定义"></textarea>
+        <MarkdownEditor v-model="form.definition" :rows="5" />
         <label>类型</label>
         <select v-model="form.type" class="ce-input">
           <option v-for="(m, k) in TYPE_META" :key="k" :value="k">{{ m.label }}</option>
@@ -58,6 +63,7 @@
 <script setup>
 import { ref, watch } from 'vue'
 import { isLowConfidence, statusLabel, confPercent } from '@/utils/confidence'
+import MarkdownEditor from '@/components/MarkdownEditor.vue'
 import { TYPE_META } from '@/design/tokens'
 
 const props = defineProps({
@@ -84,6 +90,7 @@ watch(() => props.concept, (c) => {
 .ce-meta span { font-size: var(--text-sm); color: var(--text-muted); }
 .ce-form { display: flex; flex-direction: column; gap: 6px; }
 .ce-form label { font-size: var(--text-xs); color: var(--text-muted); margin-top: var(--space-sm); }
+.ce-def-empty { color: var(--text-muted); font-style: italic; }
 .ce-input, .ce-textarea {
   width: 100%; padding: 8px 10px;
   border: 1px solid var(--border-subtle);

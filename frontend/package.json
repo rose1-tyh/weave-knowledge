@@ -15,6 +15,7 @@
     "d3": "^7.9.0",
     "element-plus": "^2.7.0",
     "html-to-image": "^1.11.13",
+    "markdown-it": "^14.3.2",
     "pinia": "^4.0.2",
     "vue": "^3.4.0",
     "vue-router": "^4.3.0"
