@@ -40,6 +40,10 @@ export function updatePaper(paperId, data) { return api.patch(`/library/papers/$
 // ── 图谱数据 ──
 export function extractKnowledge(paperId) { return api.post('/extract', { paper_id: paperId }) }
 export function getExtractStatus(paperId) { return api.get(`/extract-status/${paperId}`) }
+export function retryExtract(paperId) { return api.post(`/extract/${paperId}/retry`) }
+export function searchHybrid(q, scope = 'all', page = 1, size = 20) { return api.get('/search', { params: { q, scope, page, size } }) }
+export function analyticsOverview(paperId = '') { return api.get('/analytics/overview', { params: { paper_id: paperId } }) }
+export function reindexEmbeddings() { return api.post('/system/reindex-embeddings') }
 export function getGraphData(paperId) { return api.get(`/graph/${paperId}`) }
 
 // ── 知识编辑（概念） ──

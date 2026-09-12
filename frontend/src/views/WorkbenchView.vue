@@ -160,7 +160,13 @@
     </template>
     <EvidenceDialog ref="evidenceDialogRef" :paper-id="paperId" />
     <Transition name="weave-fade">
-      <WeaveExtraction v-if="showingWeave" />
+      <WeaveExtraction
+        v-if="showingWeave"
+        :progress="extractSnapshot"
+        :failed="weaveFailed"
+        @retry="onRetryExtract"
+        @back="$router.push('/')"
+      />
     </Transition>
   </div>
 </template>
@@ -184,7 +190,8 @@ import MatrixView from '@/components/MatrixView.vue'
 import WeaveExtraction from '@/components/motion/WeaveExtraction.vue'
 import EvidenceDialog from '@/components/EvidenceDialog.vue'
 import { isLowConfidence } from '@/utils/confidence'
-import { exportJSON as apiExportJSON, exportMarkdown as apiExportMD, updateConcept, updateRelation } from '@/api'
+import { exportJSON as apiExportJSON, exportMarkdown as apiExportMD, updateConcept, updateRelation, retryExtract } from '@/api'
+import { useExtractionProgress } from '@/composables/useExtractionProgress'
 import { toPng } from 'html-to-image'
 
 const route = useRoute()
@@ -198,6 +205,9 @@ const graphRef = ref(null)
 const addingConcept = ref(false)
 const sidebarCollapsed = ref(false)
 const showingWeave = ref(false)
+const weaveFailed = ref(false)
+// 提取实时进度：SSE 优先，断连自动降级轮询
+const { snapshot: extractSnapshot, start: startProgress, stop: stopProgress } = useExtractionProgress()
 const evidenceDialogRef = ref(null)
 function openEvidence(text) { evidenceDialogRef.value?.open(text) }
 
@@ -272,18 +282,45 @@ function selectResult(node) {
 onMounted(async () => {
   try {
     await store.loadGraph(paperId)
-    // 未提取：提交后台任务并轮询（上传/文本/URL 入口统一走此路径）
+    // 未提取：提交后台任务并订阅实时进度（上传/文本/URL 入口统一走此路径）
     if (!store.graphData || !store.graphData.nodes?.length) {
-      showingWeave.value = true          // 显示织网动画
-      try {
-        await store.ensureExtracted(paperId)   // 提交（幂等）→ 轮询 → 完成后 loadGraph
-        await delay(600)                       // 成功：让织网动画收尾，再淡出露出真实图谱
-      } finally {
-        showingWeave.value = false
-      }
+      await beginExtraction()
     }
   } catch (_) { /* store.error 已处理 */ }
 })
+onUnmounted(() => stopProgress())
+
+// 提交提取（服务端幂等）并订阅 SSE 进度；完成加载图谱，失败在织网层给出重试
+async function beginExtraction() {
+  showingWeave.value = true
+  weaveFailed.value = false
+  try {
+    await store.runExtraction(paperId)
+  } catch (_) {
+    showingWeave.value = false
+    return
+  }
+  watchExtraction()
+}
+
+function watchExtraction() {
+  startProgress(paperId, {
+    onDone: onExtractDone,
+    onFailed: () => { weaveFailed.value = true },
+  })
+}
+
+async function onExtractDone() {
+  await store.loadGraph(paperId)
+  await delay(600)   // 让织网动画收尾，再淡出露出真实图谱
+  showingWeave.value = false
+}
+
+async function onRetryExtract() {
+  weaveFailed.value = false
+  try { await retryExtract(paperId) } catch { /* 运行中：进度流会继续推进 */ }
+  watchExtraction()
+}
 function delay(ms) { return new Promise(r => setTimeout(r, ms)) }
 
 async function reload() {
