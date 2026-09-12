@@ -6,6 +6,7 @@ const routes = [
   { path: '/import', name: 'Import', component: () => import('@/views/ImportView.vue'), meta: { title: '织识 · 导入', transition: 'fade-slide' } },
   { path: '/workbench/:paperId', name: 'Workbench', component: () => import('@/views/WorkbenchView.vue'), meta: { title: '织识 · 工作台', transition: 'zoom-fade' } },
   { path: '/explore', name: 'Explore', component: () => import('@/views/ExploreView.vue'), meta: { title: '织识 · 全局探索', transition: 'weave-reveal' } },
+  { path: '/analytics', name: 'Analytics', component: () => import('@/views/AnalyticsView.vue'), meta: { title: '织识 · 知识洞察', transition: 'fade-slide' } },
   {
     path: '/:pathMatch(.*)*',
     redirect: '/',

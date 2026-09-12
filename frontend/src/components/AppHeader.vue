@@ -17,6 +17,9 @@
       <router-link to="/explore" class="nav-item" active-class="active">
         <el-icon class="nav-icon"><Connection /></el-icon>全局探索
       </router-link>
+      <router-link to="/analytics" class="nav-item" active-class="active">
+        <el-icon class="nav-icon"><DataAnalysis /></el-icon>洞察
+      </router-link>
     </nav>
 
     <!-- 右侧：搜索 / 主题切换 / 上传 -->
@@ -41,7 +44,7 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { HomeFilled, Collection, Connection, Search, Moon, Sunny, Plus } from '@element-plus/icons-vue'
+import { HomeFilled, Collection, Connection, DataAnalysis, Search, Moon, Sunny, Plus } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()
