@@ -401,6 +401,9 @@ async def merge_suggestions(req: MergeSuggestRequest):
         rows = await db.execute_fetchall("SELECT * FROM concepts WHERE paper_id = ?", [pid])
         papers.append({"paper": paper, "concepts": [dict(r) for r in rows]})
 
+    # 预载向量索引：候选精排用已落库向量做余弦，避免逐对实时调 HTTP（O(N²) HTTP → 0）
+    vectors = await embedding_service.load_vectors([p["paper"]["id"] for p in papers])
+
     suggestions = []
     now = datetime.now().isoformat()
 
@@ -416,15 +419,19 @@ async def merge_suggestions(req: MergeSuggestRequest):
                     # 原文完全一致 → exact；仅规范化后一致（如「知识图谱」vs「知识 图谱」）→ similar
                     matched_by = "exact" if ca["name"] == cb["name"] else "similar"
                 else:
-                    # 相似度扫描：bigram 取最优候选，边缘可 embedding 精排（未配置则纯 bigram）
+                    # 相似度扫描：bigram 取最优候选，已落库向量做余弦精排（未配置则纯 bigram）
                     best, best_sim = None, 0.0
                     for cand in pb["concepts"]:
                         s = char_bigram_jaccard(ca["name"], cand["name"])
                         if s > best_sim:
                             best, best_sim = cand, s
                     if best is not None:
-                        emb = embedding_service.similarity(ca["name"], best["name"])
-                        sim = concept_similarity(ca["name"], best["name"], emb)
+                        emb_sim = None
+                        va = vectors.get((pa["paper"]["id"], ca["slug"]))
+                        vb = vectors.get((pb["paper"]["id"], best["slug"]))
+                        if va and vb:
+                            emb_sim = embedding_service.cosine(va, vb)
+                        sim = concept_similarity(ca["name"], best["name"], emb_sim)
                         if sim >= SIMILARITY_THRESHOLD:
                             cb, matched_by = best, "similar"
                 if not cb or matched_by is None:
@@ -450,7 +457,7 @@ async def merge_suggestions(req: MergeSuggestRequest):
 
 @router.get("/explore/search")
 async def search_concepts(q: str = ""):
-    """全局概念搜索。
+    """全局概念搜索（轻量版，概念通道）。
 
     ≥3 字符走 FTS5 trigram（中文子串匹配）；<3 字符回退 LIKE（trigram 限制）。
     查询串整体作为短语匹配并转义引号，避免 MATCH 语法注入。
@@ -496,6 +503,19 @@ async def search_concepts(q: str = ""):
         "paperId": r["paper_id"],
     } for r in [dict(r) for r in rows]]
     return R.success(data={"results": results})
+
+
+# ── 混合检索 ──
+
+@router.get("/search")
+async def hybrid_search(q: str = "", scope: str = "all", page: int = 1, size: int = 20):
+    """混合检索：概念关键词 + 论文正文全文 + 语义向量三通道 RRF 融合排序。
+
+    scope: all / concepts / fulltext；结果带 snippet 高亮（<mark> 标记）、
+    命中通道列表与分页 total。未配置 embedding 时语义通道自动跳过。
+    """
+    from services.search_service import search_service
+    return R.success(data=await search_service.search(q, scope, page, size))
 
 
 # ── 导出 ──
@@ -548,6 +568,19 @@ async def backfill_confidence(paper_id: str = ""):
         total_c += result["concepts"]; total_r += result["relations"]
         processed += 1
     return R.success(data={"processed": processed, "concepts": total_c, "relations": total_r})
+
+
+@router.post("/system/reindex-embeddings")
+async def reindex_embeddings():
+    """全库重建概念向量索引（语义检索数据源）；未配置 embedding 时 skipped=True"""
+    from database import get_db
+    from services.embedding_service import embedding_service
+    if not embedding_service.enabled:
+        return R.success(data={"indexed": 0, "skipped": True})
+    db = await get_db()
+    rows = await db.execute_fetchall("SELECT paper_id, slug, name, definition FROM concepts")
+    indexed = await embedding_service.index_concepts([dict(r) for r in rows])
+    return R.success(data={"indexed": indexed})
 
 
 @router.post("/papers/{paper_id}/evidence-context")

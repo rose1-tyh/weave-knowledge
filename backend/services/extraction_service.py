@@ -17,6 +17,7 @@ from services.library_service import LibraryService
 from services.parser_registry import get_parser_for_paper
 from services.graph_service import GraphService
 from services.ai_service import AIService
+from services.embedding_service import embedding_service
 
 ai_service = AIService()
 
@@ -49,6 +50,13 @@ class ExtractionManager:
 
     def __init__(self):
         self._tasks: dict[str, asyncio.Task] = {}
+        self._bg: set[asyncio.Task] = set()  # 后台衍生任务强引用，防 GC
+
+    def _spawn_bg(self, coro):
+        """衍生后台任务（如向量索引），失败不影响主流程"""
+        task = asyncio.create_task(coro)
+        self._bg.add(task)
+        task.add_done_callback(self._bg.discard)
 
     # ── 任务状态持久化 ──
 
@@ -185,6 +193,8 @@ class ExtractionManager:
                 paper_id, "done", len(concepts_data), len(relations_data))
             await self._record(paper_id, "done",
                                message=f"提取完成：{len(concepts_data)} 个概念 · {len(relations_data)} 条关系")
+            # 语义向量索引（best-effort：未配置 embedding 时内部跳过；失败不回滚提取结果）
+            self._spawn_bg(embedding_service.index_paper_concepts(paper_id, concepts_data))
         except Exception as e:
             await LibraryService.update_extract_status(paper_id, "failed")
             await self._record(paper_id, "failed", error=str(e))

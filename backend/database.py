@@ -106,11 +106,50 @@ async def init_db():
             INSERT INTO concepts_fts(rowid, name, definition) VALUES (new.id, new.name, new.definition);
         END;
 
-        -- 启动时重建全文索引（幂等；覆盖存量数据与旧库升级路径）
-        INSERT INTO concepts_fts(concepts_fts) VALUES('rebuild');
+        -- 论文正文全文索引（标题 + 正文，全文检索通道的数据源）
+        CREATE VIRTUAL TABLE IF NOT EXISTS papers_fts USING fts5(
+            title, text,
+            content='papers', content_rowid='rowid',
+            tokenize='trigram'
+        );
+
+        CREATE TRIGGER IF NOT EXISTS papers_fts_ai AFTER INSERT ON papers BEGIN
+            INSERT INTO papers_fts(rowid, title, text) VALUES (new.rowid, new.title, new.text);
+        END;
+        CREATE TRIGGER IF NOT EXISTS papers_fts_ad AFTER DELETE ON papers BEGIN
+            INSERT INTO papers_fts(papers_fts, rowid, title, text)
+            VALUES ('delete', old.rowid, old.title, old.text);
+        END;
+        CREATE TRIGGER IF NOT EXISTS papers_fts_au AFTER UPDATE ON papers BEGIN
+            INSERT INTO papers_fts(papers_fts, rowid, title, text)
+            VALUES ('delete', old.rowid, old.title, old.text);
+            INSERT INTO papers_fts(rowid, title, text) VALUES (new.rowid, new.title, new.text);
+        END;
+
+        -- 概念语义向量（混合检索语义通道；未配置 embedding 时为空表，检索自动降级）
+        CREATE TABLE IF NOT EXISTS concept_embeddings (
+            paper_id TEXT NOT NULL REFERENCES papers(id) ON DELETE CASCADE,
+            slug TEXT NOT NULL,
+            model TEXT NOT NULL,
+            dim INTEGER NOT NULL,
+            vector BLOB NOT NULL,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (paper_id, slug, model)
+        );
     """)
     await migrate_schema(db)
+    await _rebuild_fts_if_stale(db)
     await db.commit()
+
+
+async def _rebuild_fts_if_stale(db):
+    """按需重建全文索引：仅当 FTS 行数与主表不一致（首建/存量迁移/失同步）时执行，
+    避免启动时无条件全量 rebuild 随库增长变慢"""
+    for fts_table, main_table in (("concepts_fts", "concepts"), ("papers_fts", "papers")):
+        fts_cnt = (await db.execute_fetchall(f"SELECT COUNT(*) AS c FROM {fts_table}"))[0]["c"]
+        main_cnt = (await db.execute_fetchall(f"SELECT COUNT(*) AS c FROM {main_table}"))[0]["c"]
+        if fts_cnt != main_cnt:
+            await db.execute(f"INSERT INTO {fts_table}(fts_table) VALUES('rebuild')")
 
 
 # 幂等迁移：表名 → 需补充的列定义（SQLite 无 IF NOT EXISTS for ADD COLUMN）
