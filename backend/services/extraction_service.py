@@ -13,11 +13,11 @@ import asyncio
 import os
 from datetime import datetime
 
-from services.library_service import LibraryService
-from services.parser_registry import get_parser_for_paper
-from services.graph_service import GraphService
 from services.ai_service import AIService
 from services.embedding_service import embedding_service
+from services.graph_service import GraphService
+from services.library_service import LibraryService
+from services.parser_registry import get_parser_for_paper
 
 ai_service = AIService()
 

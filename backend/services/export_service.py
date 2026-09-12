@@ -6,8 +6,8 @@ import re
 import tempfile
 
 import genanki
-
 from database import get_db
+
 from services.domain_constants import type_label
 
 # genanki 要求模型/牌组 ID 稳定（同 ID 升级时 Anki 视为同一模板，不会产生重复牌组）

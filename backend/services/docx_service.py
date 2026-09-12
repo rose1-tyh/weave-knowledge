@@ -2,8 +2,9 @@
 
 import os
 import uuid
-from docx import Document
+
 from config import PAPER_STORAGE_DIR
+from docx import Document
 
 
 class DocxService:

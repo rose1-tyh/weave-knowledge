@@ -1,9 +1,7 @@
 """静态托管测试 —— 后端托管前端构建产物 + SPA fallback（Vue history 路由）"""
 import os
-import sys
 
 import pytest
-
 from fastapi.testclient import TestClient
 
 # 前置条件：前端构建产物存在（npm run build 产出 frontend/dist）

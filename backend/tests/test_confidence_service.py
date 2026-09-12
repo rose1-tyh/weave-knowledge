@@ -1,6 +1,9 @@
 import pytest
 from services.confidence_service import (
-    text_signal_for_concept, text_signal_for_relation, final_confidence, enrich,
+    enrich,
+    final_confidence,
+    text_signal_for_concept,
+    text_signal_for_relation,
 )
 
 

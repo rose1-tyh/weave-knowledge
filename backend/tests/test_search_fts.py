@@ -1,6 +1,5 @@
 """FTS5 全文搜索测试 —— trigram 中文子串匹配 / 短查询回退 / 触发器同步 / 特殊字符转义"""
 
-import pytest
 
 
 async def _seed(db, paper_id="p1", concept="知识图谱", definition="关于知识结构的表示方法"):
@@ -79,7 +78,7 @@ async def test_short_query_falls_back_to_like(db):
 async def test_quote_in_query_does_not_break(db):
     """含引号的查询不触发 MATCH 语法错误（search_concepts 剥离控制字符）"""
     await _seed(db, concept='知识图谱')
-    from routers.knowledge import search_concepts
+    from routers.explore import search_concepts
     result = await search_concepts('知识"图谱')
     # 不抛异常；剥离引号后短语匹配命中概念名
     assert result.data["results"], "剥离控制字符后应命中概念"

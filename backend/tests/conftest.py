@@ -1,6 +1,6 @@
 import aiosqlite
-import pytest
 import database
+import pytest
 
 
 @pytest.fixture

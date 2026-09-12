@@ -1,6 +1,7 @@
 """应用配置"""
 
 import os
+
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -28,7 +29,8 @@ _data_root = WEAVE_DATA_DIR if WEAVE_DATA_DIR else os.path.join(os.path.dirname(
 
 # 论文存储
 PAPER_STORAGE_DIR = os.path.join(_data_root, "papers")
-MAX_FILE_SIZE = 50 * 1024 * 1024
+MAX_FILE_SIZE_MB = 50
+MAX_FILE_SIZE = MAX_FILE_SIZE_MB * 1024 * 1024
 ALLOWED_EXTENSIONS = {".pdf", ".docx"}
 
 # 文本处理

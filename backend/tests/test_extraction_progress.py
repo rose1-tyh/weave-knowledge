@@ -134,7 +134,7 @@ async def test_sse_stream_snapshots_and_closes(db, monkeypatch):
     mgr = ExtractionManager()
     assert mgr.submit("p-sse") is True
 
-    from routers.knowledge import _progress_events
+    from routers.extract import _progress_events
     events = []
     async for chunk in _progress_events("p-sse"):
         events.append(chunk)

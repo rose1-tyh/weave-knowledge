@@ -1,8 +1,10 @@
 """相似度服务与合并建议测试 —— bigram Jaccard / 阈值 / embedding 回退 / merge 集成"""
 
-import pytest
 from services.similarity_service import (
-    normalize, char_bigram_jaccard, concept_similarity, SIMILARITY_THRESHOLD,
+    SIMILARITY_THRESHOLD,
+    char_bigram_jaccard,
+    concept_similarity,
+    normalize,
 )
 
 
@@ -47,8 +49,8 @@ def test_concept_similarity_blends_embedding():
 
 async def test_merge_suggestions_exact_and_similar(db):
     """merge_suggestions：完全同名 → exact/0.95；仅规范化一致 → similar/0.7"""
-    from routers.knowledge import merge_suggestions
     from models.schemas import MergeSuggestRequest
+    from routers.explore import merge_suggestions
 
     for pid, title in [("p1", "论文一"), ("p2", "论文二")]:
         await db.execute(
@@ -74,8 +76,8 @@ async def test_merge_suggestions_exact_and_similar(db):
 
 async def test_merge_suggestions_unrelated_not_suggested(db):
     """无关概念不产生合并建议"""
-    from routers.knowledge import merge_suggestions
     from models.schemas import MergeSuggestRequest
+    from routers.explore import merge_suggestions
 
     for pid, title in [("p1", "论文一"), ("p2", "论文二")]:
         await db.execute(

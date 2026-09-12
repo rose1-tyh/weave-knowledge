@@ -3,18 +3,21 @@
 import os
 import sys
 from contextlib import asynccontextmanager
+
+from config import PAPER_STORAGE_DIR
+from database import close_db, init_db
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
-from routers import upload, knowledge
-from database import init_db, close_db
-from config import PAPER_STORAGE_DIR
+from logging_setup import RequestIDMiddleware, setup_logging
+from routers import explore, extract, graph, library, system, upload
 from services.extraction_service import extraction_manager
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    setup_logging()
     os.makedirs(PAPER_STORAGE_DIR, exist_ok=True)
     await init_db()
     # 上次进程遗留的"运行中"任务已随进程消亡，标记为失败以便前端重试
@@ -30,16 +33,22 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+# 本地单用户定位：仅放行 localhost 系来源（开发跨域），打包同源部署不依赖 CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+app.add_middleware(RequestIDMiddleware)
 
 app.include_router(upload.router)
-app.include_router(knowledge.router)
+app.include_router(extract.router)
+app.include_router(graph.router)
+app.include_router(library.router)
+app.include_router(explore.router)
+app.include_router(system.router)
 
 
 @app.get("/")
@@ -47,7 +56,7 @@ def root():
     # 静态托管启用时，根路径为前端页面；否则保留 API 元信息（开发模式）
     if FRONTEND_DIST:
         return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
-    return {"name": "织识 API", "version": "2.0.0"}
+    return {"name": "织识 API", "version": "3.1.0"}
 
 
 @app.get("/api/health")
@@ -80,6 +89,7 @@ if FRONTEND_DIST:
 
 if __name__ == "__main__":
     import argparse
+
     import uvicorn
 
     parser = argparse.ArgumentParser(description="织识后端服务")

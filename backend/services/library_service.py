@@ -1,6 +1,7 @@
 """知识库论文管理服务"""
 
 from datetime import datetime
+
 from database import get_db
 
 
@@ -150,7 +151,7 @@ class LibraryService:
         c_rows = await db.execute_fetchall("SELECT * FROM concepts WHERE paper_id = ?", [paper_id])
         r_rows = await db.execute_fetchall("SELECT * FROM relations WHERE paper_id = ?", [paper_id])
 
-        from services.domain_constants import type_color, rel_color
+        from services.domain_constants import rel_color, type_color
 
         concepts = [dict(r) for r in c_rows]
         relations = [dict(r) for r in r_rows]

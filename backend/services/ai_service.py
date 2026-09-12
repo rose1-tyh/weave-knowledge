@@ -3,8 +3,10 @@
 import asyncio
 import json
 import re
+
 import requests
-from config import AI_API_KEY, AI_MODEL, AI_PROVIDER, AI_BASE_URL, MAX_CHUNK_CHARS
+from config import AI_API_KEY, AI_BASE_URL, AI_MODEL, AI_PROVIDER, MAX_CHUNK_CHARS
+
 from services.confidence_service import enrich
 
 KNOWLEDGE_EXTRACTION_PROMPT = """你是一个学术知识提取引擎。阅读以下论文内容，完成知识提取。

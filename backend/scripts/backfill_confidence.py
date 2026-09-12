@@ -5,10 +5,10 @@
 import asyncio
 import sys
 
-from database import init_db, get_db, close_db
-from services.parser_registry import get_parser_for_paper
+from database import close_db, get_db, init_db
 from services.confidence_service import backfill_paper_confidences
 from services.library_service import LibraryService
+from services.parser_registry import get_parser_for_paper
 
 
 async def main():
@@ -32,7 +32,8 @@ async def main():
                     print(f"{pid}: 解析失败，跳过")
                     continue
         result = await backfill_paper_confidences(db, pid)
-        total_c += result["concepts"]; total_r += result["relations"]
+        total_c += result["concepts"]
+        total_r += result["relations"]
         print(f"{pid}: {result['concepts']} 概念, {result['relations']} 关系")
 
     print(f"完成：{len(ids)} 篇，{total_c} 概念，{total_r} 关系")

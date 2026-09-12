@@ -2,8 +2,9 @@
 
 import os
 import uuid
+
 import fitz  # PyMuPDF
-from config import PAPER_STORAGE_DIR, ALLOWED_EXTENSIONS
+from config import ALLOWED_EXTENSIONS, PAPER_STORAGE_DIR
 
 
 class PDFService:

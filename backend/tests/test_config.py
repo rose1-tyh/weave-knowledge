@@ -1,9 +1,9 @@
 """数据目录配置测试 —— WEAVE_DATA_DIR 环境变量优先，未设置时保持项目内 storage"""
 import importlib
 import os
-import pytest
 
 import config
+import pytest
 
 
 @pytest.fixture

@@ -13,8 +13,9 @@ DeepSeek/Anthropic 官方均无 embedding API，本服务面向第三方提供�
 import array
 import asyncio
 import math
+
 import requests
-from config import AI_EMBEDDING_BASE_URL, AI_EMBEDDING_API_KEY, AI_EMBEDDING_MODEL
+from config import AI_EMBEDDING_API_KEY, AI_EMBEDDING_BASE_URL, AI_EMBEDDING_MODEL
 
 # 语义召回的余弦相似度门槛（cosine 已归一化到 0~1）
 SEMANTIC_THRESHOLD = 0.55
@@ -119,6 +120,7 @@ class EmbeddingService:
         if vectors is None:
             return 0
         from datetime import datetime
+
         from database import get_db
         db = await get_db()
         now = datetime.now().isoformat()

@@ -1,6 +1,6 @@
 """提取任务管理服务测试 —— 提交/幂等/状态流转/失败路径"""
 import asyncio
-import pytest
+
 from services.extraction_service import ExtractionManager
 from services.library_service import LibraryService
 

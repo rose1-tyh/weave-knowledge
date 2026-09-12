@@ -1,9 +1,8 @@
 """混合检索测试 —— papers_fts 触发器同步 / 三通道召回 / RRF 融合 / 分页 / 语义降级"""
-import pytest
-
 import database
-from services.search_service import SearchService, rrf_fuse, sanitize_query
+import pytest
 from services.embedding_service import embedding_service, pack_vector, unpack_vector
+from services.search_service import SearchService, rrf_fuse
 
 
 async def _seed_paper(db, pid, title, text=""):

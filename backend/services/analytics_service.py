@@ -7,7 +7,7 @@ PageRank 为纯 Python 实现（幂迭代 + dangling 质量重分布），节点
 
 from collections import defaultdict
 
-from services.domain_constants import type_label, rel_label, type_color
+from services.domain_constants import rel_label, type_color, type_label
 from services.similarity_service import normalize
 
 

@@ -1,4 +1,4 @@
-from services.evidence_service import locate_evidence, evidence_context_for_paper
+from services.evidence_service import evidence_context_for_paper, locate_evidence
 
 TEXT = "[第1页]\n引言 本文介绍图谱。\n\n[第2页]\n图谱是知识结构。证据在这里出现。\n\n[第3页]\n结论。"
 

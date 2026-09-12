@@ -65,7 +65,7 @@ def main():
     # 单实例锁：已运行则提示并打开既有实例
     if not acquire_single_instance(os.path.join(data_dir, "weave.lock")):
         print(f"{APP_NAME}已在运行，打开既有实例…")
-        webbrowser.open(f"http://localhost:8000")
+        webbrowser.open("http://localhost:8000")
         return
 
     try:

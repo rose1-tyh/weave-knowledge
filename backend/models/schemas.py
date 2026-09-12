@@ -1,8 +1,8 @@
 """Pydantic 数据模型"""
 
-from pydantic import BaseModel
-from typing import Optional, List, Literal
+from typing import List, Literal, Optional
 
+from pydantic import BaseModel
 
 # ── 统一响应 ──
 
@@ -74,6 +74,9 @@ class TextExtractRequest(BaseModel):
 
 class UrlExtractRequest(BaseModel):
     url: str
+
+class EmptyPaperCreate(BaseModel):
+    title: str = "未命名知识"
 
 # ── 全局探索 ──
 

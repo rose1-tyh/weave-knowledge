@@ -12,7 +12,7 @@ k=60 为经验值（与前作 TREC 一致），对异构通道的分数量纲不
 import re
 
 from services.domain_constants import type_color
-from services.embedding_service import embedding_service, SEMANTIC_THRESHOLD
+from services.embedding_service import SEMANTIC_THRESHOLD, embedding_service
 
 RRF_K = 60
 CHANNEL_LIMIT = 50          # 每通道参与融合的最大候选数
