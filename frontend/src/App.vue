@@ -16,9 +16,24 @@
 
 <script setup>
 import { ref, onMounted, onUnmounted } from 'vue'
+import { ElNotification } from 'element-plus'
 import AppHeader from '@/components/AppHeader.vue'
 import GlowCursor from '@/components/motion/GlowCursor.vue'
 import CommandPalette from '@/components/CommandPalette.vue'
+
+// 首次使用引导：一次性提示核心交互（localStorage 标记，不打扰回头客）
+function maybeOnboard() {
+  try {
+    if (localStorage.getItem('weave-onboarded')) return
+    localStorage.setItem('weave-onboarded', '1')
+  } catch { return }
+  ElNotification({
+    title: '欢迎使用织识',
+    message: 'Ctrl+K 呼出全局命令面板；上传论文后 AI 会自动把文献编织成知识网络。',
+    type: 'info',
+    duration: 8000,
+  })
+}
 
 const paletteOpen = ref(false)
 
@@ -38,6 +53,7 @@ function onOpenPalette() {
 onMounted(() => {
   window.addEventListener('keydown', onKeydown)
   window.addEventListener('weave:open-cmdk', onOpenPalette)
+  maybeOnboard()
 })
 onUnmounted(() => {
   window.removeEventListener('keydown', onKeydown)

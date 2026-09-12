@@ -450,34 +450,33 @@ async function onAddRelation(data) {
 }
 
 // ── 可信抽取：确认/驳回（直接调 API，不经 undo/redo） ──
-async function onConfirmConcept(slug) {
-  try {
-    await updateConcept(paperId, slug, { status: 'confirmed' })
-    ElMessage.success('已确认该概念')
-    await reload()
-  } catch (e) { ElMessage.error(e.message || '确认失败') }
+// ── 审校状态乐观更新：本地先行生效，失败回滚（替代整图 reload，交互零等待） ──
+function patchStatusOptimistic(kind, id, status, successMsg, failMsg) {
+  const key = kind === 'concept' ? 'nodes' : 'links'
+  const match = kind === 'concept' ? (n) => n.id === id : (l) => l.relId === id
+  const list = store.graphData?.[key]
+  if (!list?.some(match)) return
+  const prev = list.find(match).status
+  const applyStatus = (st) => {
+    // 新数组/新对象引用 → 触发 props.data watch → d3 增量 join 刷新节点视觉（虚线/印章）
+    store.graphData = {
+      ...store.graphData,
+      [key]: list.map((item) => (match(item) ? { ...item, status: st } : item)),
+    }
+  }
+  applyStatus(status)
+  ElMessage.success(successMsg)
+  const fn = kind === 'concept' ? updateConcept : updateRelation
+  fn(paperId, id, { status }).catch((e) => {
+    applyStatus(prev)
+    ElMessage.error(e.message || failMsg)
+  })
 }
-async function onRejectConcept(slug) {
-  try {
-    await updateConcept(paperId, slug, { status: 'rejected' })
-    ElMessage.success('已驳回')
-    await reload()
-  } catch (e) { ElMessage.error(e.message || '操作失败') }
-}
-async function onConfirmRelation(relId) {
-  try {
-    await updateRelation(paperId, relId, { status: 'confirmed' })
-    ElMessage.success('已确认该关系')
-    await reload()
-  } catch (e) { ElMessage.error(e.message || '确认失败') }
-}
-async function onRejectRelation(relId) {
-  try {
-    await updateRelation(paperId, relId, { status: 'rejected' })
-    ElMessage.success('已驳回')
-    await reload()
-  } catch (e) { ElMessage.error(e.message || '操作失败') }
-}
+
+const onConfirmConcept = (slug) => patchStatusOptimistic('concept', slug, 'confirmed', '已确认该概念', '确认失败')
+const onRejectConcept = (slug) => patchStatusOptimistic('concept', slug, 'rejected', '已驳回', '操作失败')
+const onConfirmRelation = (relId) => patchStatusOptimistic('relation', relId, 'confirmed', '已确认该关系', '确认失败')
+const onRejectRelation = (relId) => patchStatusOptimistic('relation', relId, 'rejected', '已驳回', '操作失败')
 
 // ── 撤销/重做 ──
 async function handleUndo() {
@@ -498,7 +497,8 @@ async function exportPNG() {
   const el = document.querySelector('.wb-main svg')
   if (!el) return
   try {
-    const dataUrl = await toPng(el, { backgroundColor: '#080c14' })
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--space-deep').trim() || '#080c14'
+    const dataUrl = await toPng(el, { backgroundColor: bg })
     const a = document.createElement('a'); a.href = dataUrl; a.download = 'knowledge-graph.png'; a.click()
   } catch (_) { ElMessage.error('导出失败') }
 }

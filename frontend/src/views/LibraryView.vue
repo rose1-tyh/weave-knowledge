@@ -49,7 +49,9 @@
     </div>
 
     <div v-else class="empty-state">
-      <p>知识库为空</p>
+      <p class="es-seal">空</p>
+      <p class="es-title">知识库还是一张白纸</p>
+      <p class="es-sub">上传论文 → AI 提取概念与关系 → 编织成你的知识网络</p>
       <el-button type="primary" @click="router.push('/import')">上传第一篇论文</el-button>
     </div>
   </div>
@@ -203,6 +205,23 @@ async function handleAction(cmd, p) {
 .pc-date { font-size: var(--text-xs); color: var(--text-muted); }
 .empty-state { text-align: center; padding: var(--space-3xl); color: var(--text-muted); }
 .empty-state p { margin-bottom: var(--space-md); }
+.es-seal {
+  width: 64px; height: 64px;
+  display: flex; align-items: center; justify-content: center;
+  margin: 0 auto var(--space-md);
+  border: 2px solid var(--vermilion);
+  border-radius: var(--radius-md);
+  color: var(--vermilion);
+  font-family: var(--font-display);
+  font-size: var(--text-2xl);
+  transform: rotate(-4deg);
+}
+.es-title {
+  font-family: var(--font-display);
+  font-size: var(--text-lg);
+  color: var(--text-primary);
+}
+.es-sub { font-size: var(--text-sm); color: var(--text-muted); }
 
 /* ── 减弱动效 ── */
 @media (prefers-reduced-motion: reduce) {
