@@ -328,6 +328,16 @@ async def get_stats():
     return R.success(data=stats)
 
 
+@router.get("/analytics/overview")
+async def analytics_overview(paper_id: str = ""):
+    """知识统计分析：类型构成、PageRank 核心概念、关系构成、跨论文重合度。
+
+    不带 paper_id 时为全库视图（跨论文同名概念聚合为同一节点）。
+    """
+    from services.analytics_service import analytics_service
+    return R.success(data=await analytics_service.overview(paper_id or None))
+
+
 # ── 全局探索 ──
 
 @router.post("/explore/fusion")
@@ -465,9 +475,8 @@ async def search_concepts(q: str = ""):
     if not q:
         return R.success(data={"results": []})
     from database import get_db
+    from services.domain_constants import type_color
     db = await get_db()
-
-    type_colors = {"method": "#e8453c", "theory": "#8b5cf6", "dataset": "#10b981", "finding": "#f59e0b", "tool": "#00d4ff"}
 
     if len(q) >= 3:
         # FTS5 短语查询：剥离控制字符（引号/星号/括号/冒号/空白），整体包裹为短语，
@@ -498,7 +507,7 @@ async def search_concepts(q: str = ""):
         "name": r["name"],
         "type": r["type"],
         "definition": r["definition"] or "",
-        "color": type_colors.get(r["type"], "#6b7280"),
+        "color": type_color(r["type"]),
         "paperTitle": r["paper_title"],
         "paperId": r["paper_id"],
     } for r in [dict(r) for r in rows]]
@@ -536,6 +545,22 @@ async def export_markdown(paper_id: str):
     """导出知识摘要 Markdown"""
     md = await ExportService.export_markdown(paper_id)
     return R.success(data=md)
+
+
+@router.get("/export/{paper_id}/anki")
+async def export_anki(paper_id: str):
+    """导出 Anki 卡片包（.apkg 二进制流，前端以 blob 下载）"""
+    from urllib.parse import quote
+    result = await ExportService.export_anki(paper_id)
+    if result is None:
+        raise HTTPException(404, detail="论文不存在或无可导出概念")
+    content, filename = result
+    from fastapi.responses import Response
+    return Response(
+        content=content,
+        media_type="application/octet-stream",
+        headers={"Content-Disposition": f"attachment; filename=\"deck.apkg\"; filename*=UTF-8''{quote(filename)}"},
+    )
 
 
 # ── 存量置信度回填 / 证据上下文 ──

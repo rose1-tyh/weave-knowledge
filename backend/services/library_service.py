@@ -150,14 +150,7 @@ class LibraryService:
         c_rows = await db.execute_fetchall("SELECT * FROM concepts WHERE paper_id = ?", [paper_id])
         r_rows = await db.execute_fetchall("SELECT * FROM relations WHERE paper_id = ?", [paper_id])
 
-        type_colors = {
-            "method": "#e8453c", "theory": "#8b5cf6", "dataset": "#10b981",
-            "finding": "#f59e0b", "tool": "#00d4ff",
-        }
-        rel_colors = {
-            "supports": "#10b981", "contradicts": "#e8453c", "extends": "#f59e0b",
-            "cites": "#6b7280", "uses": "#00d4ff",
-        }
+        from services.domain_constants import type_color, rel_color
 
         concepts = [dict(r) for r in c_rows]
         relations = [dict(r) for r in r_rows]
@@ -170,7 +163,7 @@ class LibraryService:
             "name": c["name"],
             "definition": c["definition"],
             "type": c["type"],
-            "color": type_colors.get(c["type"], "#6b7280"),
+            "color": type_color(c["type"]),
             "page": c["page"],
             "evidence": c.get("evidence", ""),
             "confidence": c.get("confidence", 0.5),
@@ -182,7 +175,7 @@ class LibraryService:
             "source": name_to_slug.get(r["source_slug"], r["source_slug"]),
             "target": name_to_slug.get(r["target_slug"], r["target_slug"]),
             "type": r["type"],
-            "color": rel_colors.get(r["type"], "#6b7280"),
+            "color": rel_color(r["type"]),
             "evidence": r["evidence"],
             "relId": r["id"],
             "confidence": r.get("confidence", 0.5),

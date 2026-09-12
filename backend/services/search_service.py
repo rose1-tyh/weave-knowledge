@@ -11,12 +11,11 @@ k=60 为经验值（与前作 TREC 一致），对异构通道的分数量纲不
 
 import re
 
+from services.domain_constants import type_color
 from services.embedding_service import embedding_service, SEMANTIC_THRESHOLD
 
 RRF_K = 60
 CHANNEL_LIMIT = 50          # 每通道参与融合的最大候选数
-TYPE_COLORS = {"method": "#e8453c", "theory": "#8b5cf6", "dataset": "#10b981",
-               "finding": "#f59e0b", "tool": "#00d4ff"}
 
 
 def rrf_fuse(channels: dict[str, list[tuple]], weights: dict[str, float] | None = None) -> dict:
@@ -169,7 +168,7 @@ class SearchService:
                 "id": meta["slug"],
                 "name": meta["name"],
                 "type": meta["type"],
-                "color": TYPE_COLORS.get(meta["type"], "#6b7280"),
+                "color": type_color(meta["type"]),
                 "snippet": meta.get("definition", "")[:160],
                 "paperId": meta["paper_id"],
                 "paperTitle": meta.get("paper_title", ""),
