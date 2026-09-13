@@ -62,7 +62,7 @@ async def test_status_not_found(db):
     assert st["status"] == "not_found"
 
 
-async def test_run_success_flow_writes_db(db, monkeypatch):
+async def test_run_success_flow_writes_db(db, monkeypatch, seeded_ai_key):
     """真实 _run：解析正文（DB 已有 text）→ AI 提取 → 写库 → done"""
     await _seed_paper(db, with_text="图谱 图谱 图谱 图谱 图谱 图谱")
 
@@ -94,7 +94,7 @@ async def test_run_success_flow_writes_db(db, monkeypatch):
     assert st["status"] == "done"
 
 
-async def test_run_failure_sets_failed(db, monkeypatch):
+async def test_run_failure_sets_failed(db, monkeypatch, seeded_ai_key):
     """提取异常 → extract_status=failed + error 记录"""
     await _seed_paper(db)
 
@@ -114,7 +114,7 @@ async def test_run_failure_sets_failed(db, monkeypatch):
     assert "AI 服务不可用" in st["error"]
 
 
-async def test_run_empty_concepts_sets_failed(db, monkeypatch):
+async def test_run_empty_concepts_sets_failed(db, monkeypatch, seeded_ai_key):
     """AI 返回空概念 → failed + 明确错误"""
     await _seed_paper(db)
 

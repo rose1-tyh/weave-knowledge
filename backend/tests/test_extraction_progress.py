@@ -20,7 +20,7 @@ async def _seed_paper(db, pid="p1", with_text="论文正文"):
     await db.commit()
 
 
-async def test_progress_stages_recorded(db, monkeypatch):
+async def test_progress_stages_recorded(db, monkeypatch, seeded_ai_key):
     """分阶段进度写入 extract_tasks：运行中可读，终态 progress=1.0"""
     await _seed_paper(db, "p-prog")
     from services import extraction_service as es
@@ -64,7 +64,7 @@ async def test_status_maps_stage_to_status(db, monkeypatch):
     assert st["stage"] == "extracting"
 
 
-async def test_retry_after_failure(db, monkeypatch):
+async def test_retry_after_failure(db, monkeypatch, seeded_ai_key):
     """失败后重试：重新提交并覆盖任务记录，二次成功 → done"""
     await _seed_paper(db, "p-retry")
     from services import extraction_service as es
@@ -121,7 +121,7 @@ async def test_recover_stale_marks_failed(db):
     assert "重启" in st["error"]
 
 
-async def test_sse_stream_snapshots_and_closes(db, monkeypatch):
+async def test_sse_stream_snapshots_and_closes(db, monkeypatch, seeded_ai_key):
     """SSE 事件流：先推快照，终态推送后自动关闭"""
     await _seed_paper(db, "p-sse")
     from services import extraction_service as es
