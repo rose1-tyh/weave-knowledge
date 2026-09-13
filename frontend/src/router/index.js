@@ -20,6 +20,23 @@ const router = createRouter({
 
 router.afterEach((to) => {
   document.title = to.meta.title || '织识'
+  // 记录最近路由：桌面应用模式下下次启动恢复（见下方 maybeRestoreLastRoute）
+  try { localStorage.setItem('weave-last-route', to.fullPath) } catch { /* 忽略 */ }
 })
+
+// 桌面应用模式（后端 /api/health 的 appMode 标记，由 run.py 设置 WEAVE_APP_MODE）：
+// 启动时恢复上次浏览的页面；浏览器模式保持常规行为（URL 即入口）
+async function maybeRestoreLastRoute() {
+  try {
+    const resp = await fetch('/api/health')
+    const data = await resp.json()
+    if (!data.appMode) return
+    const last = localStorage.getItem('weave-last-route')
+    if (last && last !== '/' && last !== router.currentRoute.value.fullPath) {
+      router.replace(last)
+    }
+  } catch { /* 非关键路径：探测失败即留在默认页 */ }
+}
+maybeRestoreLastRoute()
 
 export default router

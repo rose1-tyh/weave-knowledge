@@ -129,3 +129,17 @@ def test_request_id_middleware_sets_header_and_logging(monkeypatch):
 
     assert any("test-rid-42" in r.getMessage() for r in records)
     logging.getLogger("weave.access").removeHandler(capture)
+
+
+def test_health_reports_version_and_app_mode(monkeypatch):
+    """/api/health：版本号 + 桌面应用模式标记（run.py 设 WEAVE_APP_MODE）"""
+    from main import health
+
+    monkeypatch.delenv("WEAVE_APP_MODE", raising=False)
+    payload = health()
+    assert payload["status"] == "ok"
+    assert payload["version"]
+    assert payload["appMode"] is False
+
+    monkeypatch.setenv("WEAVE_APP_MODE", "1")
+    assert health()["appMode"] is True

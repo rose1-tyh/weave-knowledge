@@ -3,6 +3,22 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，
 版本号遵循语义化版本（SemVer）。
 
+## [3.2.0] — 2026-09-13
+
+桌面应用化与 GitHub 分享就绪。
+
+### 新增
+- **桌面原生窗口**：run.py 经 pywebview（WebView2）打开独立应用窗口，替代「自动开浏览器」；WebView2 缺失或 `--browser`/`WEAVE_UI=browser` 时自动回退浏览器模式（三级兜底）
+- **应用图标**：朱砂「织」多尺寸 ico（任务栏/exe/窗口）+ 512px PNG（`scripts/make_icon.py` 可重新生成）
+- **记住上次页面**：桌面模式（`/api/health` 的 appMode 标记）下启动自动恢复上次浏览的页面；浏览器模式行为不变
+- **单实例锁跨平台**：Windows msvcrt / POSIX fcntl 自动适配
+- **发布流水线**：`release.yml`——推送 `v*` 标签自动构建 Windows 桌面包并挂到 GitHub Release
+- **开发指南** `docs/DEVELOPMENT.md`：扩展任务改动清单（加类型/加 API/加页面/加导出）+ 工程纪律 + 发布流程
+- Dependabot（pip / npm / github-actions 周更）
+
+### 变更
+- 版本单一来源 `config.APP_VERSION`（3.2.0），`/api/health` 返回 version + appMode；前端 package.json 版本同步
+
 ## [3.1.0] — 2026-09-12
 
 竞赛级全面升级：提取管线重构、混合检索、知识洞察、双主题设计系统与工程化补全。

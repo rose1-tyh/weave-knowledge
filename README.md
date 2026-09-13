@@ -1,11 +1,17 @@
+<div align="center">
+
+<img src="backend/assets/weave-512.png" width="88" alt="织识图标"/>
+
 # 织识 Weave · 学术知识重构引擎
 
-> 上传论文 → AI 提取概念与关系 → 编织为可交互、可验证、可导出的知识网络
+**上传论文 → AI 提取概念与关系 → 编织为可交互、可验证、可导出的知识网络**
+
+</div>
 
 **区别于 ChatPDF 类问答产品：织识不做对话，专注把散落的文献重构为结构化知识。**
 面向学术阅读与科研场景：文献综述、跨论文概念对齐、个人知识体系沉淀。
 
-![CI](https://github.com/OWNER/weave-knowledge/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/YOUR_GITHUB_USERNAME/weave-knowledge/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Version](https://img.shields.io/badge/version-3.1.0-blue.svg)
 
@@ -118,7 +124,9 @@ cd backend && python scripts/seed_demo.py
 build.bat        # npm build + PyInstaller onedir → backend/dist/织识/织识.exe
 ```
 
-双击 `织识.exe`：单实例锁 + 端口探测 + 自动打开浏览器，数据存于 `%APPDATA%\织识`。
+双击 `织识.exe`：**原生窗口**（WebView2）打开应用，朱砂「织」应用图标 + 任务栏名称；
+单实例锁 + 端口探测 + 启动自动恢复上次浏览的页面；数据存于 `%APPDATA%\织识`。
+WebView2 不可用时自动回退系统浏览器；`织识.exe --browser` 可强制浏览器模式。
 
 ---
 
@@ -154,15 +162,18 @@ cd frontend && npm test
 │   ├── database.py          # SQLite：DDL / FTS5 / 幂等迁移
 │   ├── routers/             # extract / graph / library / explore / system / upload
 │   ├── services/            # 提取管线 / 混合检索 / 置信度 / 证据定位 / Anki 导出 …
-│   ├── scripts/seed_demo.py # 演示数据种子（离线幂等）
-│   └── tests/               # 90 个测试
+│   ├── scripts/             # seed_demo 演示数据 · make_icon 图标生成
+│   ├── assets/weave.ico     # 应用图标（任务栏/exe/窗口）
+│   └── tests/               # 90+ 测试
 ├── frontend/                # Vue 3 + Vite + Element Plus + D3
 │   └── src/
 │       ├── design/tokens.js # 设计令牌单一来源
 │       ├── composables/     # 主题切换 / SSE 进度 / 错误处理
 │       ├── views/           # 首页 / 知识库 / 导入 / 工作台 / 探索 / 洞察
 │       └── components/      # 图谱引擎 / 命令面板 / Markdown 编辑器 …
-├── docs/superpowers/        # 设计 spec 与实施 plan
+├── docs/
+│   ├── DEVELOPMENT.md       # 开发指南：扩展任务改动清单 + 工程纪律
+│   └── superpowers/         # 设计 spec 与实施 plan
 └── Dockerfile               # 多阶段构建（node build → python 运行）
 ```
 

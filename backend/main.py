@@ -4,7 +4,7 @@ import os
 import sys
 from contextlib import asynccontextmanager
 
-from config import PAPER_STORAGE_DIR
+from config import APP_VERSION, PAPER_STORAGE_DIR
 from database import close_db, init_db
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,9 +27,9 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(
-    title="织识 API v3.1",
+    title=f"织识 API v{APP_VERSION}",
     description="学术知识重构引擎 —— 知识库管理 + AI 提取 + 知识编辑 + 跨论文融合 + 混合检索",
-    version="3.1.0",
+    version=APP_VERSION,
     lifespan=lifespan,
 )
 
@@ -56,12 +56,17 @@ def root():
     # 静态托管启用时，根路径为前端页面；否则保留 API 元信息（开发模式）
     if FRONTEND_DIST:
         return FileResponse(os.path.join(FRONTEND_DIST, "index.html"))
-    return {"name": "织识 API", "version": "3.1.0"}
+    return {"name": "织识 API", "version": APP_VERSION}
 
 
 @app.get("/api/health")
 def health():
-    return {"status": "ok"}
+    # appMode：桌面启动器（run.py）设置 WEAVE_APP_MODE，前端据此启用桌面行为（记住上次页面）
+    return {
+        "status": "ok",
+        "version": APP_VERSION,
+        "appMode": os.environ.get("WEAVE_APP_MODE") == "1",
+    }
 
 
 # ── 前端静态托管（打包/生产模式）：API 路由之后挂载 ──

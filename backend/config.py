@@ -6,6 +6,9 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# 应用版本（main.py 元信息 / /api/health / 桌面启动器共用）
+APP_VERSION = "3.2.0"
+
 # AI 提供方: 'anthropic'（Claude）或 'openai'（DeepSeek 等 OpenAI 兼容接口）
 AI_PROVIDER = os.getenv("AI_PROVIDER", "anthropic")
 AI_API_KEY = os.getenv("AI_API_KEY", "") or os.getenv("ANTHROPIC_API_KEY", "")

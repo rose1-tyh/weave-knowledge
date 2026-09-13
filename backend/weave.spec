@@ -2,7 +2,7 @@
 """织识 PyInstaller 打包配置（onedir 模式）
 
 用法：cd backend && pyinstaller weave.spec
-产物：backend/dist/织识/织识.exe（双击启动，浏览器访问）
+产物：backend/dist/织识/织识.exe（双击启动原生窗口，浏览器为兜底）
 """
 
 APP_NAME = "织识"
@@ -14,6 +14,8 @@ a = Analysis(
     datas=[
         # 前端构建产物 → 运行时位于 _MEIPASS/frontend/dist（main.py 的查找路径之一）
         ('../frontend/dist', 'frontend/dist'),
+        # 应用图标（pywebview 窗口 / 文档资源）
+        ('assets/weave.ico', 'assets'),
     ],
     hiddenimports=[
         # C 扩展/异步库（PyInstaller 静态分析易漏）
@@ -26,6 +28,14 @@ a = Analysis(
         'dotenv',
         'docx',
         'multipart',
+        # pywebview（函数内延迟导入，静态分析不可见）
+        'webview',
+        'webview.platforms.edgechromium',
+        'webview.platforms.winforms',
+        'webview.platforms.cef',
+        'clr_loader',
+        'clr_loader.netfx',
+        'pythonnet',
         # uvicorn 动态加载的协议/循环实现
         'uvicorn.logging',
         'uvicorn.loops',
@@ -66,6 +76,7 @@ exe = EXE(
     target_arch=None,
     codesign_identity=None,
     entitlements_file=None,
+    icon='assets/weave.ico',   # exe / 任务栏 / 窗口图标
 )
 
 coll = COLLECT(
