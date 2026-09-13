@@ -11,7 +11,7 @@ requests==2.32.3
 beautifulsoup4==4.12.3
 genanki==0.13.1  # Anki 卡片包导出（.apkg）
 pywebview==6.2.1  # 桌面版原生窗口（Windows 走 WebView2；服务端部署时闲置）
-pytest==8.3.3
+pytest==9.1.1
 pytest-asyncio==0.24.0
 pytest-cov==7.1.0
 httpx==0.28.1  # 测试依赖（starlette TestClient）
