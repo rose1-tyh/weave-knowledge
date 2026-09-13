@@ -13,7 +13,7 @@ jobs:
     name: 桌面版 · Windows 打包
     runs-on: windows-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
       - uses: actions/setup-python@v5
         with:
