@@ -11,7 +11,7 @@
 **区别于 ChatPDF 类问答产品：织识不做对话，专注把散落的文献重构为结构化知识。**
 面向学术阅读与科研场景：文献综述、跨论文概念对齐、个人知识体系沉淀。
 
-![CI](https://github.com/YOUR_GITHUB_USERNAME/weave-knowledge/actions/workflows/ci.yml/badge.svg)
+![CI](https://github.com/rose1-tyh/weave-knowledge/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
 ![Version](https://img.shields.io/badge/version-3.3.0-blue.svg)
 
