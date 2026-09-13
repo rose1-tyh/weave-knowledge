@@ -78,6 +78,23 @@ class UrlExtractRequest(BaseModel):
 class EmptyPaperCreate(BaseModel):
     title: str = "未命名知识"
 
+# ── 应用设置（BYOK） ──
+
+class SettingsUpdate(BaseModel):
+    ai_provider: Optional[Literal["anthropic", "openai"]] = None
+    ai_api_key: Optional[str] = None
+    ai_base_url: Optional[str] = None
+    ai_model: Optional[str] = None
+    ai_embedding_base_url: Optional[str] = None
+    ai_embedding_api_key: Optional[str] = None
+    ai_embedding_model: Optional[str] = None
+
+class SettingsTestRequest(BaseModel):
+    ai_provider: Optional[Literal["anthropic", "openai"]] = None
+    ai_api_key: Optional[str] = None
+    ai_base_url: Optional[str] = None
+    ai_model: Optional[str] = None
+
 # ── 全局探索 ──
 
 class FusionRequest(BaseModel):

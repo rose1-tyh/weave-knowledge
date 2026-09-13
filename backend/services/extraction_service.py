@@ -14,12 +14,11 @@ import os
 from datetime import datetime
 
 from services.ai_service import AIService
-from services.embedding_service import embedding_service
+from services.embedding_service import EmbeddingService
 from services.graph_service import GraphService
 from services.library_service import LibraryService
 from services.parser_registry import get_parser_for_paper
-
-ai_service = AIService()
+from services.settings_service import SettingsService
 
 # 阶段 → 总进度锚点（extracting 为区间，按分片数在区间内线性推进）
 STAGE_PROGRESS = {
@@ -174,7 +173,10 @@ class ExtractionManager:
                 await self._record(paper_id, stage, progress=progress,
                                    detail=detail, message=f"AI 提取中（{detail}）")
 
-            raw = await ai_service.extract_knowledge(text, title, on_progress=on_progress)
+            # BYOK：每次任务读当前用户设置（改 Key 立即生效，无需重启）
+            settings = await SettingsService.get_all()
+            svc = AIService.for_settings(settings)
+            raw = await svc.extract_knowledge(text, title, on_progress=on_progress)
 
             await self._record(paper_id, "scoring", message="置信度交叉评估")
             graph = GraphService.build_graph(raw, title)
@@ -194,7 +196,8 @@ class ExtractionManager:
             await self._record(paper_id, "done",
                                message=f"提取完成：{len(concepts_data)} 个概念 · {len(relations_data)} 条关系")
             # 语义向量索引（best-effort：未配置 embedding 时内部跳过；失败不回滚提取结果）
-            self._spawn_bg(embedding_service.index_paper_concepts(paper_id, concepts_data))
+            emb = EmbeddingService.for_settings(settings)
+            self._spawn_bg(emb.index_paper_concepts(paper_id, concepts_data))
         except Exception as e:
             await LibraryService.update_extract_status(paper_id, "failed")
             await self._record(paper_id, "failed", error=str(e))

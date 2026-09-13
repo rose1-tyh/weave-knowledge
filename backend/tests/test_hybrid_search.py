@@ -1,8 +1,9 @@
 """混合检索测试 —— papers_fts 触发器同步 / 三通道召回 / RRF 融合 / 分页 / 语义降级"""
 import database
 import pytest
-from services.embedding_service import embedding_service, pack_vector, unpack_vector
+from services.embedding_service import EmbeddingService, pack_vector, unpack_vector
 from services.search_service import SearchService, rrf_fuse
+from services.settings_service import SettingsService
 
 
 async def _seed_paper(db, pid, title, text=""):
@@ -86,13 +87,17 @@ async def test_semantic_channel_with_stored_vectors(db, monkeypatch):
         "VALUES ('p1', 'k2', 'fake', 2, ?, '2026-09-01')", [pack_vector([0.0, 1.0])])
     await db.commit()
 
-    monkeypatch.setattr(type(embedding_service), "enabled",
-                        property(lambda self: True))
+    # BYOK：语义通道按用户设置构造客户端 → 打桩设置与查询向量
+    async def fake_settings(scope=None):
+        return {"ai_embedding_base_url": "https://siliconflow.example", "ai_embedding_api_key": "sk-e",
+                "ai_embedding_model": "bge-m3"}
 
-    async def fake_query(text):
+    monkeypatch.setattr(SettingsService, "get_all", staticmethod(fake_settings))
+
+    async def fake_query(self, text):
         return [1.0, 0.0]
 
-    monkeypatch.setattr(embedding_service, "embed_query", fake_query)
+    monkeypatch.setattr(EmbeddingService, "embed_query", fake_query)
 
     svc = SearchService()
     result = await svc.search("表示学习", scope="concepts")
@@ -107,7 +112,10 @@ async def test_semantic_channel_degrades_without_config(db, monkeypatch):
     """未配置 embedding → 语义通道跳过，仅关键词通道"""
     await _seed_paper(db, "p1", "论文一")
     await _seed_concept(db, "p1", "k1", "知识图谱", "知识表示")
-    monkeypatch.setattr(type(embedding_service), "enabled", property(lambda self: False))
+    async def empty_settings(scope=None):
+        return {"ai_embedding_base_url": "", "ai_embedding_api_key": "", "ai_embedding_model": ""}
+
+    monkeypatch.setattr(SettingsService, "get_all", staticmethod(empty_settings))
 
     svc = SearchService()
     result = await svc.search("知识图谱", scope="all")

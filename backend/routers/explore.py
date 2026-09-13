@@ -66,7 +66,7 @@ async def merge_suggestions(req: MergeSuggestRequest):
         raise HTTPException(400, detail="至少选择 2 篇论文")
 
     from database import get_db
-    from services.embedding_service import embedding_service
+    from services.embedding_service import EmbeddingService
     from services.similarity_service import (
         SIMILARITY_THRESHOLD,
         char_bigram_jaccard,
@@ -86,7 +86,7 @@ async def merge_suggestions(req: MergeSuggestRequest):
         papers.append({"paper": paper, "concepts": [dict(r) for r in rows]})
 
     # 预载向量索引：候选精排用已落库向量做余弦，避免逐对实时调 HTTP（O(N²) HTTP → 0）
-    vectors = await embedding_service.load_vectors([p["paper"]["id"] for p in papers])
+    vectors = await EmbeddingService.load_vectors([p["paper"]["id"] for p in papers])
 
     suggestions = []
     now = datetime.now().isoformat()
@@ -114,7 +114,7 @@ async def merge_suggestions(req: MergeSuggestRequest):
                         va = vectors.get((pa["paper"]["id"], ca["slug"]))
                         vb = vectors.get((pb["paper"]["id"], best["slug"]))
                         if va and vb:
-                            emb_sim = embedding_service.cosine(va, vb)
+                            emb_sim = EmbeddingService.cosine(va, vb)
                         sim = concept_similarity(ca["name"], best["name"], emb_sim)
                         if sim >= SIMILARITY_THRESHOLD:
                             cb, matched_by = best, "similar"

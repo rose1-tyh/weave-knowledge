@@ -11,7 +11,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from logging_setup import RequestIDMiddleware, setup_logging
-from routers import explore, extract, graph, library, system, upload
+from routers import explore, extract, graph, library, settings, system, upload
 from services.extraction_service import extraction_manager
 
 
@@ -49,6 +49,7 @@ app.include_router(graph.router)
 app.include_router(library.router)
 app.include_router(explore.router)
 app.include_router(system.router)
+app.include_router(settings.router)
 
 
 @app.get("/")

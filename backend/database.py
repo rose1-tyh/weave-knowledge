@@ -86,6 +86,15 @@ async def init_db():
             updated_at TEXT NOT NULL
         );
 
+        -- 应用设置（BYOK 自带 API Key）：scope 预留多用户升级位（当前恒 'global'）
+        CREATE TABLE IF NOT EXISTS app_settings (
+            scope TEXT NOT NULL DEFAULT 'global',
+            key TEXT NOT NULL,
+            value TEXT,
+            updated_at TEXT NOT NULL,
+            PRIMARY KEY (scope, key)
+        );
+
         -- 概念全文索引（FTS5 trigram：支持中文子串匹配；<3 字符查询回退 LIKE）
         CREATE VIRTUAL TABLE IF NOT EXISTS concepts_fts USING fts5(
             name, definition,

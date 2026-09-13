@@ -42,18 +42,65 @@ KNOWLEDGE_EXTRACTION_PROMPT = """你是一个学术知识提取引擎。阅读�
 
 
 class AIService:
-    """AI 知识提取：按提供方调用（anthropic / openai 兼容），处理分片与合并"""
+    """AI 知识提取：按提供方调用（anthropic / openai 兼容），处理分片与合并
 
-    def __init__(self):
-        self.provider = AI_PROVIDER
-        self.model = AI_MODEL
-        self.api_key = AI_API_KEY
-        self.base_url = AI_BASE_URL.rstrip("/")
-        if self.provider == "anthropic":
+    配置参数化（BYOK）：实例可绑定特定 provider/key；`for_settings()` 从用户设置构造，
+    anthropic SDK 客户端延迟创建。默认构造回退 config 环境变量（.env 作出厂默认）。
+    """
+
+    def __init__(self, provider: str | None = None, api_key: str | None = None,
+                 model: str | None = None, base_url: str | None = None):
+        self.provider = provider or AI_PROVIDER
+        self.model = model or AI_MODEL
+        self.api_key = api_key if api_key is not None else AI_API_KEY
+        self.base_url = (base_url or AI_BASE_URL).rstrip("/")
+        self._anthropic = None  # 延迟创建（按 key 缓存）
+
+    @classmethod
+    def for_settings(cls, settings: dict) -> "AIService":
+        """从 SettingsService.get_all() 的合并配置构造（每次任务取最新用户设置）"""
+        return cls(
+            provider=settings.get("ai_provider"),
+            api_key=settings.get("ai_api_key"),
+            model=settings.get("ai_model"),
+            base_url=settings.get("ai_base_url"),
+        )
+
+    def _anthropic_client(self):
+        if self._anthropic is None:
             from anthropic import Anthropic
             self._anthropic = Anthropic(api_key=self.api_key)
-        else:
-            self._anthropic = None
+        return self._anthropic
+
+    @staticmethod
+    def probe(provider: str, api_key: str, base_url: str, model: str) -> dict:
+        """最小连通性探测（1-token 请求，同步阻塞，供线程池调用）。
+
+        返回 {ok, latencyMs} 或 {ok=False, error}；不抛异常。
+        """
+        import time
+        start = time.perf_counter()
+        try:
+            if provider == "anthropic":
+                from anthropic import Anthropic
+                client = Anthropic(api_key=api_key, timeout=15.0)
+                client.messages.create(
+                    model=model, max_tokens=1,
+                    messages=[{"role": "user", "content": "hi"}],
+                )
+            else:
+                resp = requests.post(
+                    f"{base_url.rstrip('/')}/chat/completions",
+                    headers={"Authorization": f"Bearer {api_key}",
+                             "Content-Type": "application/json"},
+                    json={"model": model, "max_tokens": 1,
+                          "messages": [{"role": "user", "content": "hi"}]},
+                    timeout=15,
+                )
+                resp.raise_for_status()
+            return {"ok": True, "latencyMs": int((time.perf_counter() - start) * 1000)}
+        except Exception as e:
+            return {"ok": False, "error": str(e)[:300]}
 
     async def extract_knowledge(self, full_text: str, paper_title: str, on_progress=None) -> dict:
         """从论文全文中提取知识图谱（容错归一化 + 置信度交叉）
@@ -158,7 +205,7 @@ class AIService:
         user_content = f"## 论文标题\n{title}\n\n## 论文内容\n{text}"
 
         if self.provider == "anthropic":
-            response = self._anthropic.messages.create(
+            response = self._anthropic_client().messages.create(
                 model=self.model,
                 max_tokens=4096,
                 system=KNOWLEDGE_EXTRACTION_PROMPT,

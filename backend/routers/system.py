@@ -44,10 +44,12 @@ async def backfill_confidence(paper_id: str = ""):
 async def reindex_embeddings():
     """全库重建概念向量索引（语义检索数据源）；未配置 embedding 时 skipped=True"""
     from database import get_db
-    from services.embedding_service import embedding_service
-    if not embedding_service.enabled:
+    from services.embedding_service import EmbeddingService
+    from services.settings_service import SettingsService
+    emb = EmbeddingService.for_settings(await SettingsService.get_all())
+    if not emb.enabled:
         return R.success(data={"indexed": 0, "skipped": True})
     db = await get_db()
     rows = await db.execute_fetchall("SELECT paper_id, slug, name, definition FROM concepts")
-    indexed = await embedding_service.index_concepts([dict(r) for r in rows])
+    indexed = await emb.index_concepts([dict(r) for r in rows])
     return R.success(data={"indexed": indexed})

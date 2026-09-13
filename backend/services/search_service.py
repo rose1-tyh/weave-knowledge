@@ -12,7 +12,7 @@ k=60 为经验值（与前作 TREC 一致），对异构通道的分数量纲不
 import re
 
 from services.domain_constants import type_color
-from services.embedding_service import SEMANTIC_THRESHOLD, embedding_service
+from services.embedding_service import SEMANTIC_THRESHOLD, EmbeddingService
 
 RRF_K = 60
 CHANNEL_LIMIT = 50          # 每通道参与融合的最大候选数
@@ -120,19 +120,21 @@ class SearchService:
 
     async def _semantic_channel(self, q: str) -> list[tuple]:
         """语义通道：查询向量与概念向量余弦召回；未配置 embedding 返回空"""
-        if not embedding_service.enabled:
+        from services.settings_service import SettingsService
+        svc = EmbeddingService.for_settings(await SettingsService.get_all())
+        if not svc.enabled:
             return []
-        query_vec = await embedding_service.embed_query(q)
+        query_vec = await svc.embed_query(q)
         if not query_vec:
             return []
-        vectors = await embedding_service.load_vectors()
+        vectors = await EmbeddingService.load_vectors()
         if not vectors:
             return []
         scored = []
         for (paper_id, slug), vec in vectors.items():
             if len(vec) != len(query_vec):
                 continue
-            sim = embedding_service.cosine(query_vec, vec)
+            sim = EmbeddingService.cosine(query_vec, vec)
             if sim >= SEMANTIC_THRESHOLD:
                 scored.append((sim, paper_id, slug))
         scored.sort(reverse=True)

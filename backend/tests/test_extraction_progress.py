@@ -149,7 +149,7 @@ async def test_sse_stream_snapshots_and_closes(db, monkeypatch):
 
 async def test_llm_call_runs_in_thread_pool(db, monkeypatch):
     """LLM 同步阻塞调用经线程池执行：阻塞期间事件循环持续调度其他协程"""
-    from services import extraction_service as es
+    from services.ai_service import AIService
 
     def slow_llm(self, chunk, label):
         time.sleep(0.3)
@@ -157,7 +157,7 @@ async def test_llm_call_runs_in_thread_pool(db, monkeypatch):
                               "page": 1, "evidence": "", "confidence": 0.9}],
                 "relations": []}
 
-    monkeypatch.setattr(es.AIService, "_extract_single", slow_llm)
+    monkeypatch.setattr(AIService, "_extract_single", slow_llm)
 
     ticks = {"n": 0}
     stop = {"flag": False}
@@ -168,7 +168,7 @@ async def test_llm_call_runs_in_thread_pool(db, monkeypatch):
             await asyncio.sleep(0.02)
 
     t = asyncio.create_task(ticker())
-    result = await es.ai_service.extract_knowledge("短文本", "t")
+    result = await AIService().extract_knowledge("短文本", "t")
     stop["flag"] = True
     await t
 

@@ -36,10 +36,20 @@ def unpack_vector(blob: bytes) -> list:
 class EmbeddingService:
     """OpenAI 兼容 embedding 客户端；未配置时全部方法安全降级"""
 
-    def __init__(self):
-        self.base_url = AI_EMBEDDING_BASE_URL.rstrip("/")
-        self.api_key = AI_EMBEDDING_API_KEY
-        self.model = AI_EMBEDDING_MODEL
+    def __init__(self, base_url: str | None = None, api_key: str | None = None,
+                 model: str | None = None):
+        self.base_url = (base_url if base_url is not None else AI_EMBEDDING_BASE_URL).rstrip("/")
+        self.api_key = api_key if api_key is not None else AI_EMBEDDING_API_KEY
+        self.model = model or AI_EMBEDDING_MODEL
+
+    @classmethod
+    def for_settings(cls, settings: dict) -> "EmbeddingService":
+        """从 SettingsService.get_all() 的合并配置构造（BYOK 动态生效）"""
+        return cls(
+            base_url=settings.get("ai_embedding_base_url"),
+            api_key=settings.get("ai_embedding_api_key"),
+            model=settings.get("ai_embedding_model"),
+        )
 
     @property
     def enabled(self) -> bool:
@@ -143,7 +153,8 @@ class EmbeddingService:
                  "definition": c.get("definition", "")} for c in concepts]
         return await self.index_concepts(rows)
 
-    async def load_vectors(self, paper_ids: list[str] | None = None) -> dict:
+    @staticmethod
+    async def load_vectors(paper_ids: list[str] | None = None) -> dict:
         """读取向量索引：{(paper_id, slug): vector}；可按论文过滤"""
         from database import get_db
         db = await get_db()
