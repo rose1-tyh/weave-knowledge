@@ -29,6 +29,7 @@ def setup_logging() -> logging.Logger:
 
     from config import DATABASE_PATH
     log_path = os.path.join(os.path.dirname(DATABASE_PATH), "weave.log")
+    os.makedirs(os.path.dirname(log_path), exist_ok=True)  # 数据目录可能尚不存在（CI/首次运行）
     file_handler = logging.handlers.RotatingFileHandler(
         log_path, maxBytes=2 * 1024 * 1024, backupCount=3, encoding="utf-8")
     file_handler.setFormatter(fmt)
