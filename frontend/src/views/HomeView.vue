@@ -1,6 +1,10 @@
 <template>
   <div class="home-page">
-    <ParticleBackground :accent="'#e8453c'" :density="72" :opacity="0.55" />
+        <router-link v-if="needsKey" to="/settings" class="byok-banner" data-test="byok-banner">
+      <el-icon><Key /></el-icon>
+      首次使用：配置你自己的 API Key 以启用 AI 提取（支持 DeepSeek / 智谱 GLM / Kimi 等） →
+    </router-link>
+<ParticleBackground :accent="'#e8453c'" :density="72" :opacity="0.55" />
 
     <!-- ══════════ Hero ══════════ -->
     <section class="hero">
@@ -216,7 +220,8 @@
 </template>
 
 <script setup>
-import { Document, Aim, Connection } from '@element-plus/icons-vue'
+import { Document, Aim, Connection, Key } from '@element-plus/icons-vue'
+import { getSettings } from '@/api'
 import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { useLibraryStore } from '@/stores/library'
@@ -235,8 +240,14 @@ const statCards = ref([
   { label: '知识关系', value: 0, icon: Connection, accent: 'accent-amber' },
 ])
 const recentPapers = ref([])
+const needsKey = ref(false)   // BYOK：未配置 API Key 时的引导提示
 
 onMounted(async () => {
+  // BYOK 引导：未配置 Key 时顶部提示（配置后自动消失）
+  try {
+    const s = await getSettings()
+    needsKey.value = !s.hasKey
+  } catch { /* 非关键路径 */ }
   await lib.fetchStats()
   statCards.value[0].value = lib.stats.paperCount || 0
   statCards.value[1].value = lib.stats.conceptCount || 0
@@ -820,4 +831,26 @@ function openPaper(p) {
   }
   .home-page { scroll-behavior: auto; }
 }
+
+/* BYOK 未配置引导条 */
+.byok-banner {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-sm);
+  margin: var(--space-md) auto 0;
+  width: fit-content;
+  max-width: calc(100% - 48px);
+  padding: 8px 18px;
+  border: 1px solid var(--amber);
+  border-radius: var(--radius-lg);
+  background: var(--amber-bg);
+  color: var(--amber);
+  font-size: var(--text-sm);
+  text-decoration: none;
+  transition: all var(--ease-out);
+}
+.byok-banner:hover { box-shadow: var(--amber-glow); transform: translateY(-1px); }
 </style>

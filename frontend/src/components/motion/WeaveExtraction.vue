@@ -22,6 +22,7 @@
         <p class="we-failed-msg">{{ progress?.error || '提取失败，请重试' }}</p>
         <div class="we-failed-actions">
           <el-button size="small" type="primary" data-test="extract-retry" @click="$emit('retry')">重试提取</el-button>
+          <el-button v-if="needsSettings" size="small" data-test="goto-settings" @click="$emit('settings')">去设置</el-button>
           <el-button size="small" @click="$emit('back')">返回首页</el-button>
         </div>
       </div>
@@ -40,7 +41,7 @@ const props = defineProps({
   progress: { type: Object, default: null },   // useExtractionProgress 的 snapshot
   failed: Boolean,
 })
-defineEmits(['retry', 'back'])
+defineEmits(['retry', 'back', 'settings'])
 
 const STAGES = [
   { label: '解析文本', dur: 900 },
@@ -79,6 +80,7 @@ const detailText = computed(() => {
   return props.progress.message || ''
 })
 // 节点点亮跟随真实进度；无进度时按时间线推进
+const needsSettings = computed(() => (props.progress?.error || '').includes('未配置'))
 const litFromProgress = computed(() => Math.floor((progressPct.value / 100) * fakeNodes.length))
 const litDisplay = computed(() => (real.value ? litFromProgress.value : litCount.value))
 

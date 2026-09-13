@@ -64,6 +64,12 @@ cd backend && python scripts/seed_demo.py     # 离线幂等，--force 重灌
 2. 顶部导航 / 命令面板动作项按需加入
 3. 图表数据变换写成 `utils/` 纯函数并测试（参考 `charts.js`）
 
+### 改 AI 配置面（BYOK）
+- 存储：`services/settings_service.py` 的 `_FIELDS`（key → env 出厂默认）；路由 `routers/settings.py`（掩码/校验）
+- 消费：`AIService.for_settings()` / `EmbeddingService.for_settings()`——新消费点一律按设置实例化，禁止 import 期固化
+- 前端预设：`design/providerPresets.js`（预设=填表快捷方式，协议只有 openai/anthropic 二分）
+- `app_settings.scope` 为多用户预留位，将来按 user_id 隔离无需改表
+
 ### 新增导出格式
 `backend/services/export_service.py` 加方法 + `routers/graph.py` 加端点；
 二进制格式用 `Response(content=..., media_type=..., Content-Disposition)` 参照 Anki 导出。

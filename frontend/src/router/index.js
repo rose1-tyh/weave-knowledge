@@ -7,6 +7,7 @@ const routes = [
   { path: '/workbench/:paperId', name: 'Workbench', component: () => import('@/views/WorkbenchView.vue'), meta: { title: '织识 · 工作台', transition: 'zoom-fade' } },
   { path: '/explore', name: 'Explore', component: () => import('@/views/ExploreView.vue'), meta: { title: '织识 · 全局探索', transition: 'weave-reveal' } },
   { path: '/analytics', name: 'Analytics', component: () => import('@/views/AnalyticsView.vue'), meta: { title: '织识 · 知识洞察', transition: 'fade-slide' } },
+  { path: '/settings', name: 'Settings', component: () => import('@/views/SettingsView.vue'), meta: { title: '织识 · 设置', transition: 'fade-slide' } },
   {
     path: '/:pathMatch(.*)*',
     redirect: '/',

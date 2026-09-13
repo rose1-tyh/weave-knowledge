@@ -3,6 +3,21 @@
 本项目遵循 [Keep a Changelog](https://keepachangelog.com/zh-CN/1.1.0/) 格式，
 版本号遵循语义化版本（SemVer）。
 
+## [3.3.0] — 2026-09-13
+
+BYOK：自带 API Key + 国产大模型预设，AI 成本归用户、部署者零支出。
+
+### 新增
+- **设置页 `/settings`**：预设卡片一键切换 DeepSeek / 智谱 GLM / Kimi / 通义 Qwen / 硅基流动 / Claude / 自定义 OpenAI 兼容端点；Key 密码框 + 掩码回显（sk-****abcd）；「测试连接」1-token 真实探测（先测后存）
+- **设置存储** `app_settings` 表（scope 字段为多用户预留位）；读取链 DB 用户设置 → 环境变量出厂默认，现有 .env 用户无感迁移
+- **动态生效**：AI/embedding 客户端工厂化（AIService/EmbeddingService.for_settings），提取任务、语义检索、向量索引每次读当前设置——改 Key 无需重启
+- 未配置 Key 引导：首页提示条直达设置；提取失败面板识别无 Key 场景给「去设置」按钮
+- embedding 预设（智谱 embedding-3 / 硅基流动 bge-m3），可选点亮语义检索
+
+### 边界（诚实披露）
+- 不做登录/多用户（本地单用户形态下 Key 不经过服务器，登录无必要；scope+工厂即升级位）
+- Key 明文存本机 SQLite（与 .env 同级），接口仅掩码回显；加密存储列为后续迭代
+
 ## [3.2.0] — 2026-09-13
 
 桌面应用化与 GitHub 分享就绪。

@@ -13,7 +13,7 @@
 
 ![CI](https://github.com/YOUR_GITHUB_USERNAME/weave-knowledge/actions/workflows/ci.yml/badge.svg)
 ![License](https://img.shields.io/badge/License-MIT-green.svg)
-![Version](https://img.shields.io/badge/version-3.1.0-blue.svg)
+![Version](https://img.shields.io/badge/version-3.3.0-blue.svg)
 
 | 工作台 · 墨夜主题 | 工作台 · 宣纸主题 |
 | --- | --- |
@@ -29,6 +29,9 @@
 
 ### 🧠 可信 AI 提取
 上传 PDF / DOCX、粘贴文本或网页链接，AI 提取核心概念（方法/理论/数据集/发现/工具）与关系（支撑/矛盾/扩展/引用/使用）。每条概念附带**原文证据**与**交叉置信度**（AI 自评 × 文本信号几何平均），以「待确认 → 确认/驳回」的审校工作流闭环，确认节点盖「验」字印章。
+
+### 🔑 自带 API Key（BYOK）
+内置设置页一键切换 **DeepSeek / 智谱 GLM / Kimi / 通义 Qwen / 硅基流动 / Claude / 自定义 OpenAI 兼容端点**——填入自己的 Key 即可，AI 成本归用户、部署者零支出。Key 仅保存在本机 SQLite（不上传任何服务器），修改即时生效无需重启；连接测试一键验证；可选配置 embedding（智谱 embedding-3 / 硅基流动 bge-m3）点亮语义检索。
 
 ### 📡 实时提取管线
 提取任务持久化于数据库，阶段化真实进度（解析 → 切分 → 逐段提取 i/n → 置信度 → 建图）经 **SSE** 实时推送前端，断连自动降级轮询；进程重启自动恢复遗留任务，失败一键重试。
@@ -179,6 +182,9 @@ cd frontend && npm test
 
 ## 配置说明
 
+> **推荐**：启动后进入「设置」页直接填 Key（图形界面、即时生效、支持国产模型预设）。
+> 以下环境变量作为**出厂默认**，设置页未覆盖时生效：
+
 | 环境变量 | 说明 | 默认 |
 | --- | --- | --- |
 | `AI_PROVIDER` | `anthropic` 或 `openai`（DeepSeek 等兼容接口） | `anthropic` |
@@ -190,6 +196,7 @@ cd frontend && npm test
 ## 已知边界
 
 - 单用户本地应用定位：无认证体系（安全投入集中在 SSRF 防护、CORS 白名单、输入校验与请求日志）
+- BYOK 的 API Key 以明文存于本地 SQLite（与 `.env` 同级，不上传）；设置接口仅掩码回显，如需加密存储可作为后续迭代
 - 单进程 SQLite：任务表不支持多 worker 部署；向量检索为内存余弦扫描（万级概念内够用）
 - URL 抓取存在 DNS rebinding 理论窗口（解析与请求分离），本地单用户场景可接受，代码有注释标注
 - 桌面启动器（`run.py`）使用了 `msvcrt`，仅支持 Windows

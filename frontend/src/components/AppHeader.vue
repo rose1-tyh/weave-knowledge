@@ -27,6 +27,9 @@
       <button class="btn-cmdk" title="全局搜索（Ctrl+K）" @click="openPalette">
         <el-icon><Search /></el-icon><span class="kbd-hint">Ctrl K</span>
       </button>
+      <button class="btn-theme" title="设置（API Key）" data-test="settings-entry" @click="router.push('/settings')">
+        <el-icon><Setting /></el-icon>
+      </button>
       <button
         class="btn-theme"
         :title="theme === 'dark' ? '切换到宣纸主题' : '切换到墨夜主题'"
@@ -44,7 +47,7 @@
 
 <script setup>
 import { useRouter } from 'vue-router'
-import { HomeFilled, Collection, Connection, DataAnalysis, Search, Moon, Sunny, Plus } from '@element-plus/icons-vue'
+import { HomeFilled, Collection, Connection, DataAnalysis, Search, Setting, Moon, Sunny, Plus } from '@element-plus/icons-vue'
 import { useTheme } from '@/composables/useTheme'
 
 const router = useRouter()

@@ -166,6 +166,7 @@
         :failed="weaveFailed"
         @retry="onRetryExtract"
         @back="$router.push('/')"
+        @settings="$router.push('/settings')"
       />
     </Transition>
   </div>

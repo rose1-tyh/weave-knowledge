@@ -69,7 +69,7 @@
 <script setup>
 import { ref, computed, watch, nextTick } from 'vue'
 import { useRouter } from 'vue-router'
-import { Document, HomeFilled, Collection, Connection, Upload, DataAnalysis } from '@element-plus/icons-vue'
+import { Document, HomeFilled, Collection, Connection, Upload, DataAnalysis, Setting } from '@element-plus/icons-vue'
 import { searchHybrid } from '@/api'
 import { renderSnippet } from '@/utils/markdown'
 
@@ -93,6 +93,7 @@ const ACTIONS = [
   { kind: 'action', key: 'act-explore', name: '全局探索 · 融合图谱', hint: '导航', icon: Connection, to: '/explore' },
   { kind: 'action', key: 'act-import', name: '上传论文 / 导入知识', hint: '动作', icon: Upload, to: '/import' },
   { kind: 'action', key: 'act-analytics', name: '知识洞察 · 统计分析', hint: '导航', icon: DataAnalysis, to: '/analytics' },
+  { kind: 'action', key: 'act-settings', name: '设置 · 配置 API Key', hint: '动作', icon: Setting, to: '/settings' },
 ]
 
 let debounceTimer = null

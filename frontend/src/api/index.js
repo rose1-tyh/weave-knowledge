@@ -44,6 +44,11 @@ export function retryExtract(paperId) { return api.post(`/extract/${paperId}/ret
 export function searchHybrid(q, scope = 'all', page = 1, size = 20) { return api.get('/search', { params: { q, scope, page, size } }) }
 export function analyticsOverview(paperId = '') { return api.get('/analytics/overview', { params: { paper_id: paperId } }) }
 export function reindexEmbeddings() { return api.post('/system/reindex-embeddings') }
+
+// ── 应用设置（BYOK） ──
+export function getSettings() { return api.get('/settings') }
+export function updateSettings(data) { return api.put('/settings', data) }
+export function testSettings(data) { return api.post('/settings/test', data) }
 export function getGraphData(paperId) { return api.get(`/graph/${paperId}`) }
 
 // ── 知识编辑（概念） ──

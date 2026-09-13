@@ -176,6 +176,8 @@ class ExtractionManager:
             # BYOK：每次任务读当前用户设置（改 Key 立即生效，无需重启）
             settings = await SettingsService.get_all()
             svc = AIService.for_settings(settings)
+            if not svc.api_key:
+                raise RuntimeError("未配置 API Key，请先在「设置」中配置自己的模型服务")
             raw = await svc.extract_knowledge(text, title, on_progress=on_progress)
 
             await self._record(paper_id, "scoring", message="置信度交叉评估")
